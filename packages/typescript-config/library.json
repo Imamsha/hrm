@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "HRM shared library (ESM, consumed by Node, Vite and Metro)",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "outDir": "${configDir}/dist",
+    "rootDir": "${configDir}/src",
+    "verbatimModuleSyntax": true
+  }
+}

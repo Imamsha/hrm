@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22.22.2'
+  POSTGRES_SUPERUSER: postgres
+  POSTGRES_SUPERUSER_PASSWORD: postgres_ci
+  POSTGRES_DB: hrm
+  HRM_MIGRATOR_PASSWORD: migrator_ci
+  HRM_APP_PASSWORD: app_ci
+  REDIS_PASSWORD: redis_ci
+  STORAGE_ACCESS_KEY: hrm_storage_ci
+  STORAGE_SECRET_KEY: hrm_storage_ci_secret
+
+jobs:
+  quality:
+    name: Typecheck, lint, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm turbo run typecheck lint test build
+
+  integration:
+    name: Integration tests (PostgreSQL, Redis, S3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg17-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci
+          POSTGRES_DB: hrm
+        ports: ['5434:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hrm"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7.4.12-alpine
+        ports: ['6380:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      storage:
+        image: rustfs/rustfs:1.0.4
+        env:
+          RUSTFS_VOLUMES: /data
+          RUSTFS_ADDRESS: 0.0.0.0:9000
+          RUSTFS_ACCESS_KEY: hrm_storage_ci
+          RUSTFS_SECRET_KEY: hrm_storage_ci_secret
+        ports: ['9000:9000']
+        options: >-
+          --health-cmd "curl -fsS http://127.0.0.1:9000/health"
+          --health-interval 10s --health-timeout 5s --health-retries 12
+    env:
+      TEST_DATABASE_URL: postgresql://hrm_app:app_ci@localhost:5434/hrm_test?schema=public
+      TEST_MIGRATION_DATABASE_URL: postgresql://hrm_migrator:migrator_ci@localhost:5434/hrm_test?schema=public
+      # CI Redis runs without a password; the test URL reflects that.
+      TEST_REDIS_URL: redis://localhost:6380/1
+      TEST_STORAGE_BUCKET: hrm-test
+      STORAGE_ENDPOINT: http://localhost:9000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Provision database roles and extensions (same script as docker-compose)
+        env:
+          PGHOST: localhost
+          PGPORT: '5434'
+          PGPASSWORD: postgres_ci
+          POSTGRES_USER: postgres
+        run: bash infrastructure/postgres/init/01-roles-and-extensions.sh
+      - run: pnpm turbo run build --filter "./packages/*"
+      - name: Integration tests (applies migrations first)
+        run: pnpm --filter @hrm/api test:integration
+      - name: Verify migrations match the Prisma schema (no drift)
+        working-directory: apps/api
+        env:
+          MIGRATION_DATABASE_URL: ${{ env.TEST_MIGRATION_DATABASE_URL }}
+        run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code

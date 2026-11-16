@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "HRM Platform",
+    "slug": "hrm-platform",
+    "scheme": "hrm",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.hrmplatform.app",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.hrmplatform.app",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "extends": "@hrm/typescript-config/react.json",
+  "compilerOptions": {
+    "types": ["vite/client", "@testing-library/jest-dom/vitest"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "e2e", "*.config.ts"]
+}

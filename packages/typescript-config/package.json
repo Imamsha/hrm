@@ -1,0 +1,15 @@
+{
+  "name": "@hrm/typescript-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "*.json"
+  ],
+  "exports": {
+    "./base.json": "./base.json",
+    "./library.json": "./library.json",
+    "./nest.json": "./nest.json",
+    "./react.json": "./react.json"
+  }
+}

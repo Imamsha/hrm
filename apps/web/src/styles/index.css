@@ -1,0 +1,5 @@
+@import 'tailwindcss';
+@import '@hrm/ui-web/styles.css';
+
+/* Generate utilities used inside the shared component package. */
+@source '../../../../packages/ui-web/src';

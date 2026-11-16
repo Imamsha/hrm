@@ -1,0 +1,87 @@
+// HRM platform database schema.
+// Conventions (docs/database/CONVENTIONS.md):
+//   - snake_case tables/columns via @@map/@map, camelCase in TypeScript.
+//   - UUIDv7 primary keys (time-ordered -> better B-tree locality than v4).
+//   - timestamptz everywhere; numeric (never float) for money.
+//   - Every tenant-owned table has organization_id and an RLS policy (see migrations).
+//   - Check constraints, RLS policies, triggers and functions live in migration SQL
+//     because Prisma schema language cannot express them.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  moduleFormat        = "esm"
+  runtime             = "nodejs"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+
+  @@map("organization_status")
+}
+
+enum AuditActorType {
+  USER
+  SYSTEM
+  API_CLIENT
+  AI_AGENT
+
+  @@map("audit_actor_type")
+}
+
+/// Tenant root. Every tenant-owned row references an organization.
+model Organization {
+  id              String             @id @default(uuid(7)) @db.Uuid
+  /// URL-safe unique handle, case-insensitive.
+  slug            String             @unique @db.Citext
+  name            String             @db.VarChar(200)
+  legalName       String?            @map("legal_name") @db.VarChar(300)
+  status          OrganizationStatus @default(ACTIVE)
+  /// IANA time zone, e.g. Asia/Kolkata.
+  defaultTimezone String             @default("Asia/Kolkata") @map("default_timezone") @db.VarChar(64)
+  /// ISO 4217 currency code.
+  defaultCurrency String             @default("INR") @map("default_currency") @db.Char(3)
+  /// BCP 47 locale tag.
+  defaultLocale   String             @default("en-IN") @map("default_locale") @db.VarChar(35)
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime?          @map("deleted_at") @db.Timestamptz(6)
+
+  auditLogs AuditLog[]
+
+  @@index([status])
+  @@map("organizations")
+}
+
+/// Append-only audit trail. UPDATE/DELETE are blocked by a trigger.
+model AuditLog {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  actorType      AuditActorType @map("actor_type")
+  actorId        String?        @map("actor_id") @db.Uuid
+  /// Dotted verb, e.g. `organization.updated`.
+  action         String         @db.VarChar(100)
+  entityType     String         @map("entity_type") @db.VarChar(100)
+  entityId       String?        @map("entity_id") @db.VarChar(64)
+  requestId      String?        @map("request_id") @db.VarChar(64)
+  ipAddress      String?        @map("ip_address") @db.Inet
+  userAgent      String?        @map("user_agent") @db.VarChar(512)
+  /// Field-level before/after diff. Sensitive values must be redacted before writing.
+  changes        Json?
+  metadata       Json?
+  occurredAt     DateTime       @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([organizationId, occurredAt(sort: Desc)])
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, actorId])
+  @@map("audit_logs")
+}

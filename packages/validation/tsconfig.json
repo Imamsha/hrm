@@ -1,0 +1,7 @@
+{
+  "extends": "@hrm/typescript-config/library.json",
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "include": ["src", "*.config.ts"]
+}

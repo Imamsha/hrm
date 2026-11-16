@@ -1,0 +1,12 @@
+# Infrastructure
+
+| Folder           | Status                                                                                                                                                                                                                                                                           |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `postgres/init/` | **Active.** Bootstrap script for roles (`hrm_migrator`, `hrm_app`), extensions (pgcrypto, citext, vector, pg_stat_statements) and the `hrm` / `hrm_test` databases. Used by `docker-compose.yml` and CI. Runs only on an empty data volume (`docker compose down -v` to re-run). |
+| `docker/`        | Phase 14 — production multi-stage Dockerfiles (API, worker, web).                                                                                                                                                                                                                |
+| `nginx/`         | Phase 14 — reverse proxy, TLS, security headers, static web hosting.                                                                                                                                                                                                             |
+| `redis/`         | Configuration is inline in `docker-compose.yml` (AOF, `noeviction`, password). Production tuning in Phase 14.                                                                                                                                                                    |
+| `monitoring/`    | Phase 14 — OpenTelemetry collector, metrics, dashboards, alerting.                                                                                                                                                                                                               |
+| `ci-cd/`         | CI lives in `.github/workflows/ci.yml` (GitHub requires that path). CD pipelines in Phase 14.                                                                                                                                                                                    |
+
+Local services are defined in the root `docker-compose.yml`; see `docs/DEPLOYMENT_GUIDE.md`.

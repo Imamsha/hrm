@@ -1,0 +1,10 @@
+{
+  "extends": "@hrm/typescript-config/library.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["@testing-library/jest-dom/vitest"]
+  },
+  "include": ["src", "*.config.ts"]
+}

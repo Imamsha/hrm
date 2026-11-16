@@ -1,13 +1,8 @@
 import type { HealthReport } from '@hrm/shared-types';
-import { TooltipProvider } from '@hrm/ui-web';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { routes } from '@/app/router';
+import { screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { json as jsonRaw, meta, renderAt, signInAs, stubFetch as stubCalls } from '@/test/utils';
 import { formatUptime } from './use-health';
-
-const meta = { requestId: 'req-1', timestamp: '2026-11-16T00:00:00.000Z' };
 
 function report(overrides: Partial<HealthReport['checks']> = {}): HealthReport {
   const up = { status: 'up' as const, latencyMs: 3 };
@@ -21,30 +16,12 @@ function report(overrides: Partial<HealthReport['checks']> = {}): HealthReport {
   };
 }
 
-/** Stubs the network boundary only; the real API client, query layer and UI run unchanged. */
-function stubFetch(handler: (url: string) => Response) {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn((input: RequestInfo | URL) =>
-      Promise.resolve(handler(input instanceof Request ? input.url : input.toString())),
-    ),
-  );
-}
+const json = jsonRaw;
+const stubFetch = (handler: (url: string) => Response) => stubCalls((c) => handler(c.url));
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-
-function renderAt(path: string) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const router = createMemoryRouter(routes, { initialEntries: [path] });
-  render(
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <RouterProvider router={router} />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
-}
+beforeEach(() => {
+  signInAs();
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();

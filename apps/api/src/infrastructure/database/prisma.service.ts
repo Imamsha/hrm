@@ -10,10 +10,16 @@ import type { AppConfig } from '../../config/env.schema.js';
 export type TenantTransaction = Prisma.TransactionClient;
 
 export interface TenantTransactionOptions {
-  /** Explicit tenant (background jobs). Defaults to the authenticated request's organization. */
+  /** Explicit tenant (background jobs, registration). Defaults to the request's organization. */
   organizationId?: string;
+  /** Explicit user. Defaults to the authenticated request's user (may be absent). */
+  userId?: string;
   isolationLevel?: Prisma.TransactionIsolationLevel;
   timeoutMs?: number;
+}
+
+function assertUuid(value: string, what: string): void {
+  if (!uuidSchema.safeParse(value).success) throw new Error(`Context contains an invalid ${what}`);
 }
 
 /**
@@ -63,13 +69,14 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
   ): Promise<T> {
     const organizationId = options.organizationId ?? RequestContext.get()?.organizationId;
     if (!organizationId) throw AppException.tenantContextMissing();
-    if (!uuidSchema.safeParse(organizationId).success) {
-      throw new Error('Tenant context contains an invalid organization id');
-    }
+    assertUuid(organizationId, 'organization id');
+    const userId = options.userId ?? RequestContext.get()?.userId;
+    if (userId) assertUuid(userId, 'user id');
 
     return this.$transaction(
       async (tx) => {
-        await tx.$executeRaw`SELECT set_config('app.organization_id', ${organizationId}, true)`;
+        await tx.$executeRaw`SELECT set_config('app.organization_id', ${organizationId}, true),
+                                    set_config('app.user_id', ${userId ?? ''}, true)`;
         return fn(tx);
       },
       {
@@ -77,6 +84,18 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
         timeout: options.timeoutMs ?? 15_000,
       },
     );
+  }
+
+  /**
+   * Runs `fn` with only a user context (no tenant): RLS then exposes exactly the user's own
+   * memberships and the organizations they belong to (organization switcher, login).
+   */
+  async withUser<T>(userId: string, fn: (tx: TenantTransaction) => Promise<T>): Promise<T> {
+    assertUuid(userId, 'user id');
+    return this.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.user_id', ${userId}, true)`;
+      return fn(tx);
+    });
   }
 
   /** Lightweight connectivity probe used by health checks. */

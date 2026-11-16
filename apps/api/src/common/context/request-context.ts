@@ -12,6 +12,10 @@ export interface RequestContextState {
   requestId: string;
   organizationId?: string;
   userId?: string;
+  /** Authenticated session (refresh-token family) id. */
+  sessionId?: string;
+  /** Active membership in `organizationId`, verified against the database for this request. */
+  membershipId?: string;
   ipAddress?: string;
   userAgent?: string;
 }

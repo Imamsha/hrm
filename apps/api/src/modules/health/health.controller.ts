@@ -8,6 +8,7 @@ import {
 import { SkipThrottle } from '@nestjs/throttler';
 import type { HealthReport, LivenessReport } from '@hrm/shared-types';
 import { AppException } from '../../common/http/app.exception.js';
+import { Public } from '../access/decorators.js';
 import { HealthService } from './health.service.js';
 
 /**
@@ -15,6 +16,7 @@ import { HealthService } from './health.service.js';
  * They expose dependency status and latency only, never configuration or credentials.
  */
 @ApiTags('Health')
+@Public()
 @SkipThrottle()
 @Controller('health')
 export class HealthController {

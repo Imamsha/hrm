@@ -54,7 +54,14 @@ model Organization {
   updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt       DateTime?          @map("deleted_at") @db.Timestamptz(6)
 
-  auditLogs AuditLog[]
+  auditLogs       AuditLog[]
+  memberships     Membership[]
+  roles           Role[]
+  rolePermissions RolePermission[]
+  membershipRoles MembershipRole[]
+  invitations     Invitation[]
+  subscription    Subscription?
+  activeSessions  Session[]
 
   @@index([status])
   @@map("organizations")
@@ -84,4 +91,325 @@ model AuditLog {
   @@index([organizationId, entityType, entityId])
   @@index([organizationId, actorId])
   @@map("audit_logs")
+}
+
+// =============================================================================================
+// Identity (global, not tenant-owned). Accessed only through identity services.
+// =============================================================================================
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+
+  @@map("user_status")
+}
+
+/// A person who can sign in. One user may belong to many organizations (memberships).
+model User {
+  id                    String     @id @default(uuid(7)) @db.Uuid
+  email                 String     @unique @db.Citext
+  fullName              String     @map("full_name") @db.VarChar(200)
+  /// argon2id PHC string. Never returned by any API.
+  passwordHash          String     @map("password_hash")
+  status                UserStatus @default(ACTIVE)
+  emailVerifiedAt       DateTime?  @map("email_verified_at") @db.Timestamptz(6)
+  mfaEnabled            Boolean    @default(false) @map("mfa_enabled")
+  /// TOTP secret encrypted with AES-256-GCM (DATA_ENCRYPTION_KEY). Null until enrolment starts.
+  mfaSecretEncrypted    String?    @map("mfa_secret_encrypted")
+  /// SHA-256 hashes of unused one-time recovery codes.
+  mfaRecoveryCodeHashes String[]   @default([]) @map("mfa_recovery_code_hashes")
+  failedLoginCount      Int        @default(0) @map("failed_login_count")
+  lockedUntil           DateTime?  @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt           DateTime?  @map("last_login_at") @db.Timestamptz(6)
+  passwordChangedAt     DateTime   @default(now()) @map("password_changed_at") @db.Timestamptz(6)
+  createdAt             DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  memberships         Membership[]
+  sessions            Session[]
+  authEvents          AuthEvent[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@map("users")
+}
+
+/// A signed-in device/browser. Refresh tokens rotate within a session; reuse revokes the session.
+model Session {
+  id                   String    @id @default(uuid(7)) @db.Uuid
+  userId               String    @map("user_id") @db.Uuid
+  /// Organization selected in this session; re-validated against memberships on every request.
+  activeOrganizationId String?   @map("active_organization_id") @db.Uuid
+  userAgent            String?   @map("user_agent") @db.VarChar(512)
+  ipAddress            String?   @map("ip_address") @db.Inet
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastUsedAt           DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(6)
+  /// Absolute lifetime; refresh cannot extend beyond it.
+  expiresAt            DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt            DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokeReason         String?   @map("revoke_reason") @db.VarChar(50)
+
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activeOrganization Organization?  @relation(fields: [activeOrganizationId], references: [id], onDelete: SetNull)
+  refreshTokens      RefreshToken[]
+
+  @@index([userId, revokedAt])
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  sessionId String    @map("session_id") @db.Uuid
+  /// SHA-256 of the opaque token. The token itself is never stored.
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  /// Set when exchanged for a new token. Presenting a used token again = theft signal.
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("refresh_tokens")
+}
+
+enum AuthEventType {
+  REGISTERED
+  LOGIN_SUCCEEDED
+  LOGIN_FAILED
+  LOGIN_LOCKED
+  MFA_CHALLENGE_FAILED
+  LOGOUT
+  LOGOUT_ALL
+  TOKEN_REUSE_DETECTED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  PASSWORD_CHANGED
+  MFA_ENABLED
+  MFA_DISABLED
+  MFA_RECOVERY_CODE_USED
+  ORGANIZATION_SWITCHED
+  SESSION_REVOKED
+
+  @@map("auth_event_type")
+}
+
+/// Security audit / login history (append-only).
+model AuthEvent {
+  id         String        @id @default(uuid(7)) @db.Uuid
+  userId     String?       @map("user_id") @db.Uuid
+  /// Attempted e-mail for failures against unknown accounts.
+  email      String?       @db.Citext
+  type       AuthEventType
+  sessionId  String?       @map("session_id") @db.Uuid
+  ipAddress  String?       @map("ip_address") @db.Inet
+  userAgent  String?       @map("user_agent") @db.VarChar(512)
+  requestId  String?       @map("request_id") @db.VarChar(64)
+  metadata   Json?
+  occurredAt DateTime      @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, occurredAt(sort: Desc)])
+  @@index([email, occurredAt(sort: Desc)])
+  @@map("auth_events")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// =============================================================================================
+// Tenant access control (tenant-owned, RLS). Composite FKs prevent cross-tenant references.
+// =============================================================================================
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+
+  @@map("membership_status")
+}
+
+model Membership {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  status         MembershipStatus @default(ACTIVE)
+  joinedAt       DateTime         @default(now()) @map("joined_at") @db.Timestamptz(6)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  roles        MembershipRole[]
+
+  @@unique([organizationId, userId])
+  @@unique([organizationId, id])
+  @@index([userId])
+  @@map("memberships")
+}
+
+/// Global permission catalog (seeded by migrations; mirrors `PERMISSIONS` in @hrm/shared-types).
+model Permission {
+  key         String @id @db.VarChar(100)
+  module      String @db.VarChar(50)
+  description String @db.VarChar(300)
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model Role {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  /// Stable machine key, unique per organization (system roles: owner, admin, hr_admin, ...).
+  key            String   @db.VarChar(64)
+  name           String   @db.VarChar(100)
+  description    String?  @db.VarChar(500)
+  /// System roles are created for every organization and cannot be renamed or deleted.
+  isSystem       Boolean  @default(false) @map("is_system")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  permissions     RolePermission[]
+  membershipRoles MembershipRole[]
+
+  @@unique([organizationId, key])
+  @@unique([organizationId, id])
+  @@map("roles")
+}
+
+model RolePermission {
+  organizationId String @map("organization_id") @db.Uuid
+  roleId         String @map("role_id") @db.Uuid
+  permissionKey  String @map("permission_key") @db.VarChar(100)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  role         Role         @relation(fields: [organizationId, roleId], references: [organizationId, id], onDelete: Cascade)
+  permission   Permission   @relation(fields: [permissionKey], references: [key], onDelete: Restrict)
+
+  @@id([roleId, permissionKey])
+  @@index([organizationId])
+  @@map("role_permissions")
+}
+
+/// ABAC scope of a role assignment. Only ORGANIZATION and SELF are evaluated until the
+/// organization structure (companies, branches, departments, teams) exists in Phase 03.
+enum AccessScopeType {
+  ORGANIZATION
+  COMPANY
+  BRANCH
+  DEPARTMENT
+  TEAM
+  SELF
+
+  @@map("access_scope_type")
+}
+
+model MembershipRole {
+  id             String          @id @default(uuid(7)) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  membershipId   String          @map("membership_id") @db.Uuid
+  roleId         String          @map("role_id") @db.Uuid
+  scopeType      AccessScopeType @default(ORGANIZATION) @map("scope_type")
+  scopeId        String?         @map("scope_id") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  membership   Membership   @relation(fields: [organizationId, membershipId], references: [organizationId, id], onDelete: Cascade)
+  role         Role         @relation(fields: [organizationId, roleId], references: [organizationId, id], onDelete: Restrict)
+
+  /// Created in SQL with NULLS NOT DISTINCT (scope_id NULL values compare equal).
+  @@unique([membershipId, roleId, scopeType, scopeId], map: "membership_roles_assignment_key")
+  @@index([organizationId, membershipId])
+  @@index([organizationId, roleId])
+  @@map("membership_roles")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+
+  @@map("invitation_status")
+}
+
+model Invitation {
+  id              String           @id @default(uuid(7)) @db.Uuid
+  organizationId  String           @map("organization_id") @db.Uuid
+  email           String           @db.Citext
+  fullName        String?          @map("full_name") @db.VarChar(200)
+  /// Roles granted on acceptance (validated against the organization's roles at acceptance time).
+  roleIds         String[]         @map("role_ids") @db.Uuid
+  tokenHash       String           @unique @map("token_hash") @db.Char(64)
+  status          InvitationStatus @default(PENDING)
+  invitedByUserId String           @map("invited_by_user_id") @db.Uuid
+  expiresAt       DateTime         @map("expires_at") @db.Timestamptz(6)
+  acceptedAt      DateTime?        @map("accepted_at") @db.Timestamptz(6)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status])
+  @@map("invitations")
+}
+
+// =============================================================================================
+// Subscriptions
+// =============================================================================================
+
+/// Global plan catalog (seeded). Prices are intentionally not modelled until billing is designed.
+model SubscriptionPlan {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  key         String   @unique @db.VarChar(50)
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(500)
+  /// Feature/usage limits, e.g. { "maxMembers": 25 }. Null value = unlimited.
+  limits      Json     @default("{}")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+
+  @@map("subscription_status")
+}
+
+model Subscription {
+  id                 String             @id @default(uuid(7)) @db.Uuid
+  organizationId     String             @unique @map("organization_id") @db.Uuid
+  planId             String             @map("plan_id") @db.Uuid
+  status             SubscriptionStatus
+  trialEndsAt        DateTime?          @map("trial_ends_at") @db.Timestamptz(6)
+  currentPeriodStart DateTime           @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd   DateTime?          @map("current_period_end") @db.Timestamptz(6)
+  canceledAt         DateTime?          @map("canceled_at") @db.Timestamptz(6)
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plan         SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@map("subscriptions")
 }

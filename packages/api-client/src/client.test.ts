@@ -98,6 +98,74 @@ describe('createApiClient', () => {
     });
   });
 
+  it('getPage returns items with server pagination', async () => {
+    const pagination = { page: 2, pageSize: 1, total: 3, totalPages: 3 };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, data: [{ id: 'b' }], meta: { ...meta, pagination } }),
+      );
+    await expect(client(fetchMock).getPage('/members', { query: { page: 2 } })).resolves.toEqual({
+      items: [{ id: 'b' }],
+      pagination,
+    });
+    const notPaged = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse(200, { success: true, data: [], meta }));
+    await expect(client(notPaged).getPage('/x')).rejects.toBeInstanceOf(ApiClientError);
+  });
+
+  it('returns undefined for 204 No Content', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
+    await expect(client(fetchMock).post('/auth/logout')).resolves.toBeUndefined();
+  });
+
+  it('refreshes once on 401 and retries with the new token', async () => {
+    let token = 'expired';
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse(401, {
+          success: false,
+          error: { code: 'UNAUTHENTICATED', message: 'x' },
+          meta,
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, { success: true, data: 'ok', meta }));
+    const onUnauthorized = vi.fn(() => {
+      token = 'fresh';
+      return Promise.resolve(true);
+    });
+    const c = createApiClient({
+      baseUrl: 'http://api.test',
+      fetch: fetchMock,
+      getAccessToken: () => token,
+      onUnauthorized,
+      credentials: 'include',
+    });
+    await expect(c.get('/me')).resolves.toBe('ok');
+    expect(onUnauthorized).toHaveBeenCalledOnce();
+    const retryInit = fetchMock.mock.calls[1]?.[1];
+    expect((retryInit?.headers as Record<string, string>).Authorization).toBe('Bearer fresh');
+    expect(retryInit?.credentials).toBe('include');
+  });
+
+  it('does not loop: a second 401 or skipAuthRefresh surfaces the error', async () => {
+    const unauthorized = () =>
+      jsonResponse(401, { success: false, error: { code: 'UNAUTHENTICATED', message: 'x' }, meta });
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockImplementation(() => Promise.resolve(unauthorized()));
+    const onUnauthorized = vi.fn(() => Promise.resolve(true));
+    const c = createApiClient({ baseUrl: 'http://api.test', fetch: fetchMock, onUnauthorized });
+    await expect(c.get('/me')).rejects.toMatchObject({ status: 401 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await expect(c.post('/auth/login', {}, { skipAuthRefresh: true })).rejects.toMatchObject({
+      status: 401,
+    });
+    expect(onUnauthorized).toHaveBeenCalledOnce();
+  });
+
   it('uses the global fetch at call time when none is injected', async () => {
     const api = createApiClient({ baseUrl: 'http://api.test/api/v1' });
     const late = vi

@@ -4,83 +4,82 @@ _Last updated: 2026-11-16_
 
 ## Current phase
 
-**Phase 01 — Foundation & architecture: implemented and verified locally. Awaiting owner
-approval.** Only the GitHub Actions run is outstanding (no Git remote / no commits yet).
-Phase 02 has **not** been started.
+**Phase 02 — Authentication, RBAC & SaaS tenancy: implemented and verified locally. Awaiting
+owner approval.** Phase 03 has **not** been started.
 
-**Current task:** none — waiting for Phase 01 approval.
+Phase 01 — approved by the owner, committed (`9bb442c`) and **CI green on GitHub**.
 
-## Verification results (2026-11-16)
+**Current task:** none — waiting for Phase 02 review/approval.
 
-| Check                                                                  | Result                                                                                                                                           |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pnpm turbo run typecheck lint test build` (11 packages)               | ✅ 37/37 tasks                                                                                                                                   |
-| `pnpm format:check`                                                    | ✅ clean                                                                                                                                         |
-| Unit / component tests                                                 | ✅ 131 passed, 0 failed, 0 skipped — business-rules 10 · design-tokens 38 · validation 13 · api-client 8 · api 41 · ui-web 9 · web 10 · mobile 2 |
-| `pnpm infra:up` (Postgres 17 + pgvector, Redis 7.4, RustFS, Mailpit)   | ✅ all healthy; port-publication check passes                                                                                                    |
-| Postgres init script (roles, extensions, `hrm` + `hrm_test`)           | ✅                                                                                                                                               |
-| Migrations on fresh databases (dev + test)                             | ✅ 2/2 applied; schema drift check: no difference                                                                                                |
-| Integration tests (tenant isolation 15, health 8, queue 1)             | ✅ 24 passed (run twice)                                                                                                                         |
-| Live API `/health`                                                     | ✅ database, redis, storage, queue all `up`; `/health/ready` 200; Swagger 200                                                                    |
-| Playwright E2E (production build + live API; desktop Chrome + Pixel 7) | ✅ 4 passed, 2 skipped by design (device-specific specs)                                                                                         |
-| Mobile Android bundle export (pnpm monorepo)                           | ✅                                                                                                                                               |
-| GitHub Actions CI                                                      | ⏳ not run — needs a remote                                                                                                                      |
-| Mobile app on a device/emulator against the live API                   | ⏳ not run (no emulator in session); component tests + bundle export pass                                                                        |
+## Phase 02 verification (2026-11-16)
 
-## Completed
+| Check                                                    | Result                                                                                                                                         |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm turbo run typecheck lint test build` (11 packages) | ✅ 37/37 tasks                                                                                                                                 |
+| `pnpm format:check`                                      | ✅ clean                                                                                                                                       |
+| Unit/component tests                                     | ✅ 190 passed — API 65 · shared-types 3 · validation 25 · api-client 12 · design-tokens 38 · business-rules 10 · ui-web 12 · web 21 · mobile 4 |
+| Integration tests (real Postgres/Redis/S3/Mailpit)       | ✅ 62 passed (24 Phase 01 + 38 Phase 02)                                                                                                       |
+| Migrations                                               | ✅ 4 applied to dev + test; drift check: no difference                                                                                         |
+| Playwright E2E (production build + live API)             | ✅ 6 passed, 4 skipped by design                                                                                                               |
+| Live smoke                                               | ✅ register → me → members; reset e-mail delivered to Mailpit via the queue                                                                    |
+| Android bundle export                                    | ✅                                                                                                                                             |
+| GitHub Actions                                           | ⏳ runs on push of this phase                                                                                                                  |
 
-Monorepo (pnpm 12 catalog, Turborepo, TS 6, strict type-aware ESLint, Prettier) · shared packages
-(shared-types, validation, api-client, design-tokens, business-rules, ui-web, configs) · NestJS 12
-API core (config validation, request context/IDs, envelope, exception filter, Zod pipe, pino,
-Helmet, CORS, throttling, versioning, Swagger) · health endpoints · Prisma 7 schema + migrations
-(organizations, append-only audit_logs, RLS, CHECKs, triggers) · least-privilege DB roles ·
-`withTenant()` tenant context · BullMQ with tenant-aware jobs · S3 storage with tenant keys · AI
-provider abstraction + pgvector helpers · design system + DataTable · web shell with live system
-status · Expo mobile shell with live health screen · CI workflow · full documentation set.
+## Phase 02 delivered
 
-## Issues found and fixed during verification
+- **Auth:** registration (provisions org, 6 system roles, owner membership, trial subscription),
+  login with lockout and generic errors, TOTP MFA (encrypted secret, replay protection, recovery
+  codes), refresh-token rotation with reuse detection, logout / logout-all, session list/revoke,
+  forgot/reset/change password via queued e-mail, login history (append-only `auth_events`).
+- **Tenancy & authorization:** global `AccessGuard` (session revocation, membership re-validation,
+  permission enforcement), tenant derived only from verified membership, `withTenant()`/`withUser()`
+  RLS contexts, permission catalog + system/custom roles, ABAC scope model (ORGANIZATION/SELF
+  enforced), Redis permission cache with versioned invalidation, owner invariants.
+- **Management APIs:** organization settings (field-level audit), additional organizations,
+  members (server pagination/search/sort, suspend, roles, remove), invitations (e-mail, preview,
+  accept for new/existing accounts), roles & permissions, audit log, subscription.
+- **Web:** auth pages (login + MFA, register, forgot/reset, accept invitation), session bootstrap
+  from httpOnly cookie, single-flight refresh, route + permission guards, org switcher, user menu,
+  Members, Roles & permissions, Organization, Audit log, Account security (password, MFA with QR,
+  sessions, history). Forms: React Hook Form + shared Zod schemas, server field errors.
+- **Mobile:** login + MFA, keystore refresh token, session restore, protected routes, home, status.
+- **Docs:** ADR-008 (authentication), ADR-009 (authorization); database, API, RBAC matrix,
+  testing, deployment, architecture, module status and roadmap updated.
 
-1. **Port collisions with other local projects.** `floodguard-db` held 5433 and
-   `floodguard-frontend` held 3000; another Vite app held 5173. Docker Desktop started our Postgres
-   **without** a host port, so clients reached the other project's database (authentication failed
-   before anything was written). Fix: defaults moved to Postgres **5434**, API **3100**, web
-   **5180**; `pnpm infra:up` now runs `scripts/check-infra-ports.mjs` and fails if any port was
-   not published.
-2. **`NODE_ENV` in root `.env`** made Vite produce a development React build. Removed from
-   `.env`/`.env.example`; the API defaults to `development`.
-3. Web preview origin `http://localhost:4173` added to dev `CORS_ORIGINS` (needed for E2E).
+## Issues found and fixed during Phase 02 verification
 
-## Pending (later phases)
-
-See `docs/DEVELOPMENT_ROADMAP.md` (Phase 02: authentication, RBAC/ABAC, memberships, full RLS
-enforcement) and its "carried forward" list (DataTable filtering/saved views/inline edit/export,
-header org switcher/search/notifications/profile, forms system).
+1. **Tenant queries could include the caller's memberships in other organizations** (OR-ed user
+   policy). Not a cross-tenant leak (own rows only) but wrong; fixed by migration
+   `20261116020000` + explicit filter + regression test.
+2. API client threw on `204 No Content`; captured `fetch` too early earlier — both fixed with tests.
+3. Dialog forms reset via effects (React Compiler lint) — refactored to remount-per-open.
 
 ## Known issues and risks
 
-1. Local Node 22.13.1 is below what parts of the ecosystem expect (Nest CLI crash, jsdom 30).
-   Recommend Node 22.22+ or 24 LTS; CI uses 22.22.2.
-2. MinIO replaced by RustFS 1.0.4 (MinIO images no longer public) — ADR-007.
-3. pnpm "Agent skills awaiting approval: @tanstack/react-table" left unapproved (owner's call).
-4. Health endpoints are public by design; no other endpoints exist until Phase 02 auth.
-5. Repository has no commits yet (initialised on `main`).
-
-## Technical decisions (details in ADRs)
-
-NestJS 12 ESM without Nest CLI · Vitest + SWC for API/libs, Jest for React Native · shared Zod
-validation · Prisma 7.10 (8.0 is RC) · BullMQ 5.81 · TypeScript 6.0.3 · TanStack Table v9 ·
-native mobile components (no NativeWind) · RustFS for local S3 · UUIDv7 keys · `hrm_app`
-(NOBYPASSRLS) + `hrm_migrator` roles · transaction-local tenant context via `set_config`.
+1. Local Node 22.13.1 (recommend 22.22+ / 24 LTS) — see ADR-001.
+2. MinIO replaced by RustFS (ADR-007).
+3. Self-registered owners have no e-mail verification flow yet (invited users are verified by the
+   link). No WebAuthn/passkeys yet.
+4. Strict refresh-token reuse detection can end a session if two clients race a refresh; the web
+   client de-duplicates refreshes.
+5. Structural ABAC scopes (company/branch/department/team) are stored but deny until Phase 03.
+6. Subscription plans carry no pricing; billing is out of scope until designed.
+7. Mobile app not yet run on a device/emulator (component tests + bundle export only).
+8. pnpm "agent skills" prompt for `@tanstack/react-table` left unapproved (owner's call).
 
 ## Database migration status
 
-| Migration                              | dev (`hrm`) | test (`hrm_test`) |
-| -------------------------------------- | ----------- | ----------------- |
-| 20261116000000_platform_foundation     | ✅ applied  | ✅ applied        |
-| 20261116000100_organizations_and_audit | ✅ applied  | ✅ applied        |
+| Migration                                         | dev | test |
+| ------------------------------------------------- | --- | ---- |
+| 20261116000000_platform_foundation                | ✅  | ✅   |
+| 20261116000100_organizations_and_audit            | ✅  | ✅   |
+| 20261116010000_identity_access_subscriptions      | ✅  | ✅   |
+| 20261116020000_user_scope_policies_without_tenant | ✅  | ✅   |
 
 ## Next recommended task
 
-1. Owner reviews and approves Phase 01.
-2. Commit Phase 01, add a GitHub remote, push, confirm CI green.
-3. Start Phase 02 (authentication, RBAC/ABAC, SaaS tenancy) after approval.
+1. Owner reviews Phase 02 (try it: `pnpm dev`, register at http://localhost:5180/register).
+2. Confirm CI is green for the Phase 02 commit.
+3. After approval: Phase 03 — organization structure (companies, legal entities, branches,
+   departments, teams, designations, job grades, locations, org chart, working days, holiday
+   calendars) and evaluation of structural ABAC scopes.

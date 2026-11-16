@@ -2,6 +2,7 @@ import { VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module.js';
@@ -25,6 +26,8 @@ export async function createApp(config: AppConfig): Promise<NestExpressApplicati
   app.use(requestContextMiddleware);
   app.useBodyParser('json', { limit: '1mb' });
   app.useBodyParser('urlencoded', { limit: '1mb', extended: false });
+  // Only the httpOnly refresh-token cookie is read (auth endpoints).
+  app.use(cookieParser());
 
   app.use(
     helmet({
@@ -55,6 +58,7 @@ export async function createApp(config: AppConfig): Promise<NestExpressApplicati
           'Multi-tenant HRM SaaS REST API. All responses use the `{ success, data | error, meta }` envelope.',
         )
         .setVersion(config.APP_VERSION)
+        .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' })
         .build(),
     );
     SwaggerModule.setup(DOCS_PATH, app, document, { jsonDocumentUrl: `${DOCS_PATH}/openapi.json` });

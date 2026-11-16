@@ -2,6 +2,7 @@ import { cn, Tooltip } from '@hrm/ui-web';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { navigation } from '@/app/navigation';
+import { hasPermission, useAuth } from '@/features/auth/auth-store';
 import { usePreferences } from '@/stores/preferences';
 
 export function Brand({ collapsed }: { collapsed: boolean }) {
@@ -34,9 +35,18 @@ export function SidebarNav({
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
+  const session = useAuth((s) => s.session);
+  const sections = navigation
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => !item.permission || hasPermission(session, item.permission),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
   return (
     <nav aria-label="Main" className="flex-1 overflow-y-auto px-2 py-2">
-      {navigation.map((section) => (
+      {sections.map((section) => (
         <div key={section.label} className="mb-3">
           {collapsed ? (
             <div className="mx-2 my-2 h-px bg-sidebar-border" aria-hidden="true" />

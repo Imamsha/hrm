@@ -1,6 +1,8 @@
 import {
   type ApiFailure,
   type ApiResponse,
+  type ApiSuccess,
+  type PaginatedResult,
   ErrorCode,
   type HealthReport,
   type LivenessReport,
@@ -15,6 +17,8 @@ export interface RequestOptions {
   body?: unknown;
   signal?: AbortSignal;
   headers?: Record<string, string>;
+  /** Do not attempt `onUnauthorized` recovery (used by the auth endpoints themselves). */
+  skipAuthRefresh?: boolean;
 }
 
 export interface ApiClientConfig {
@@ -26,6 +30,13 @@ export interface ApiClientConfig {
   timeoutMs?: number;
   /** Injectable fetch (tests, React Native polyfills). */
   fetch?: typeof fetch;
+  /** `include` lets browsers send the httpOnly refresh cookie cross-origin to the API. */
+  credentials?: RequestCredentials;
+  /**
+   * Called once when a request fails with 401. Resolve `true` after obtaining a new access token
+   * (e.g. via refresh) to retry the request once; `false` to surface the 401.
+   */
+  onUnauthorized?: () => Promise<boolean>;
 }
 
 function buildUrl(baseUrl: string, path: string, query?: Record<string, QueryValue>): string {
@@ -65,11 +76,58 @@ export function createApiClient(config: ApiClientConfig) {
   const fetchImpl: typeof fetch = config.fetch ?? ((input, init) => globalThis.fetch(input, init));
   const timeoutMs = config.timeoutMs ?? 15_000;
 
+  /** Full success envelope (data + meta), with one refresh-and-retry on 401. */
+  async function requestEnvelope<T>(
+    method: string,
+    path: string,
+    options: RequestOptions = {},
+  ): Promise<ApiSuccess<T> | undefined> {
+    try {
+      return await send<T>(method, path, options);
+    } catch (err) {
+      if (
+        err instanceof ApiClientError &&
+        err.status === 401 &&
+        !options.skipAuthRefresh &&
+        config.onUnauthorized &&
+        (await config.onUnauthorized())
+      ) {
+        return send<T>(method, path, options);
+      }
+      throw err;
+    }
+  }
+
   async function request<T>(
     method: string,
     path: string,
     options: RequestOptions = {},
   ): Promise<T> {
+    return (await requestEnvelope<T>(method, path, options))?.data as T;
+  }
+
+  /** List endpoints: items plus server pagination from `meta.pagination`. */
+  async function getPage<T>(
+    path: string,
+    options: Omit<RequestOptions, 'body'> = {},
+  ): Promise<PaginatedResult<T>> {
+    const envelope = await requestEnvelope<T[]>('GET', path, options);
+    const pagination = envelope?.meta.pagination;
+    if (!envelope || !pagination) {
+      throw new ApiClientError({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: 'Expected a paginated response',
+        status: 200,
+      });
+    }
+    return { items: envelope.data, pagination };
+  }
+
+  async function send<T>(
+    method: string,
+    path: string,
+    options: RequestOptions,
+  ): Promise<ApiSuccess<T> | undefined> {
     const headers: Record<string, string> = { Accept: 'application/json', ...options.headers };
     if (options.body !== undefined) headers['Content-Type'] = 'application/json';
     const token = await config.getAccessToken?.();
@@ -91,6 +149,7 @@ export function createApiClient(config: ApiClientConfig) {
         headers,
         body: options.body === undefined ? null : JSON.stringify(options.body),
         signal: controller.signal,
+        ...(config.credentials ? { credentials: config.credentials } : {}),
       });
     } catch (cause) {
       const aborted = controller.signal.aborted && !options.signal?.aborted;
@@ -133,6 +192,8 @@ export function createApiClient(config: ApiClientConfig) {
         requestId,
       });
     }
+    // 204 No Content (logout, deletes): nothing to unwrap.
+    if (response.status === 204 || !text) return undefined;
     const envelope = body as ApiResponse<T> | undefined;
     if (!envelope?.success) {
       throw new ApiClientError({
@@ -142,11 +203,12 @@ export function createApiClient(config: ApiClientConfig) {
         requestId,
       });
     }
-    return envelope.data;
+    return envelope;
   }
 
   return {
     request,
+    getPage,
     get: <T>(path: string, options?: Omit<RequestOptions, 'body'>) =>
       request<T>('GET', path, options),
     post: <T>(path: string, body?: unknown, options?: RequestOptions) =>

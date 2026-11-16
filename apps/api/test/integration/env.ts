@@ -15,6 +15,8 @@ export const testEnv = {
     'postgresql://hrm_migrator:migrator_dev_only@localhost:5434/hrm_test?schema=public',
   redisUrl: process.env.TEST_REDIS_URL ?? 'redis://:redis_dev_only@localhost:6380/1',
   bucket: process.env.TEST_STORAGE_BUCKET ?? 'hrm-test',
+  /** Mailpit HTTP API used to read e-mails sent by the API (password reset, invitations). */
+  mailpitUrl: process.env.TEST_MAILPIT_URL ?? 'http://localhost:8025',
 };
 
 export function integrationConfig(overrides: Partial<Record<string, string>> = {}): AppConfig {
@@ -31,6 +33,14 @@ export function integrationConfig(overrides: Partial<Record<string, string>> = {
     STORAGE_BUCKET: testEnv.bucket,
     STORAGE_AUTO_CREATE_BUCKET: 'true',
     CORS_ORIGINS: 'http://localhost:5180',
+    AUTH_JWT_SECRET: 'integration-test-jwt-secret-0123456789abcdef',
+    DATA_ENCRYPTION_KEY: Buffer.alloc(32, 11).toString('base64'),
+    // Suites log in many times from one IP; throttling has its own dedicated test.
+    AUTH_RATE_LIMIT_MAX: '10000',
+    RATE_LIMIT_MAX: '10000',
+    SMTP_HOST: process.env.SMTP_HOST ?? 'localhost',
+    SMTP_PORT: process.env.SMTP_PORT ?? '1025',
+    APP_WEB_URL: 'http://localhost:5180',
     ...overrides,
   });
 }

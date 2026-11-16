@@ -39,10 +39,26 @@ in the deployment environment instead.
 Mobile: Android emulator → set `EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:3100/api/v1`; physical
 device → host LAN IP, and add the Expo origin to `CORS_ORIGINS` if testing Expo web.
 
+## Authentication settings (Phase 02)
+
+| Variable                                                                                                                                                         | Purpose                                                                                                                                                               |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH_JWT_SECRET`                                                                                                                                                | HS256 key, ≥ 32 chars. Generate with `openssl rand -base64 48`. Dev values are rejected in production                                                                 |
+| `DATA_ENCRYPTION_KEY`                                                                                                                                            | base64 of exactly 32 bytes (`openssl rand -base64 32`); encrypts MFA secrets. **Losing it disables every enrolled authenticator** — back it up in the secrets manager |
+| `AUTH_COOKIE_SECURE`                                                                                                                                             | must be `true` in production (HTTPS)                                                                                                                                  |
+| `APP_WEB_URL`                                                                                                                                                    | origin used in e-mailed links (reset password, invitations)                                                                                                           |
+| `SMTP_*`                                                                                                                                                         | outgoing mail; Mailpit in development                                                                                                                                 |
+| `AUTH_ACCESS_TOKEN_TTL_SECONDS`, `AUTH_SESSION_TTL_DAYS`, `AUTH_LOCKOUT_*`, `AUTH_RATE_LIMIT_MAX`, `AUTH_PASSWORD_RESET_TTL_MINUTES`, `AUTH_INVITATION_TTL_DAYS` | security tuning (safe defaults)                                                                                                                                       |
+| `SUBSCRIPTION_TRIAL_DAYS`, `SUBSCRIPTION_DEFAULT_PLAN_KEY`                                                                                                       | trial length (business configuration) and plan assigned at registration                                                                                               |
+
+The web app and API must share a registrable site (e.g. `app.example.com` + `api.example.com`)
+for the `SameSite=Strict` refresh cookie; otherwise serve the API under the web origin via the
+reverse proxy (Phase 14).
+
 ## Production requirements already enforced by configuration
 
 - API refuses to start with invalid/missing env; in `production` it rejects wildcard CORS,
-  bucket auto-creation and `_dev_only` credentials.
+  bucket auto-creation, `_dev_only` credentials, development JWT secrets and non-Secure cookies.
 - API connects with `hrm_app` (RLS-bound); migrations run as a separate job with
   `MIGRATION_DATABASE_URL` (`pnpm db:deploy`) before rolling out new API versions.
 - Swagger disabled unless `SWAGGER_ENABLED=true`.

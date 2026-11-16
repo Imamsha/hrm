@@ -35,7 +35,26 @@ Integration tests use an isolated database (`hrm_test`), Redis DB 1 and bucket `
 (`TEST_*` variables in `.env.example`). The audit log is append-only, so tests create uniquely
 named tenants instead of cleaning up.
 
-## What is covered (Phase 01)
+## What is covered (Phase 02)
+
+- **Auth (14 integration):** registration provisioning, cookie attributes, duplicate/weak/personal
+  passwords, generic login errors, lockout, refresh rotation + reuse revocation, logout, session
+  listing/revocation, password reset through Mailpit, password change, TOTP enrolment/challenge/
+  recovery codes/replay protection, encrypted secret at rest, credential rate limiting (429).
+- **Access control (14 integration):** employee permissions, single-use invitations, immediate
+  effect of role changes, suspension, HR cannot grant owner, last-owner protections, immutable
+  system roles, existing-account invitations + organization switching, duplicate invitations,
+  settings validation + field-level audit, second organization, server pagination/search/sort.
+- **Cross-tenant (10 integration):** foreign ids behave as non-existent, foreign roles rejected,
+  switch without membership denied, client tenant headers ignored, RLS with no context, user-scope
+  visibility, composite-FK protection, invitation lookup, read-only catalogs, permission catalog
+  parity, tenant context never leaks a user's other memberships.
+- **Web:** guards and safe redirects, login + MFA, server field errors, permission-aware navigation,
+  members table server params, invite dialog, organization switcher. **Mobile:** login + MFA, only
+  the refresh token persisted in the keystore. **E2E:** register → status/admin → reload → sign out
+  → sign in, theme, mobile drawer.
+
+## What was covered in Phase 01
 
 - **Tenant isolation:** runtime role is non-superuser/no-BYPASSRLS; no context → no rows;
   `withTenant` sees only its tenant; context comes from request context; missing tenant rejected;

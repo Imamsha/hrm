@@ -8,6 +8,8 @@ const base = {
   STORAGE_ACCESS_KEY: 'key',
   STORAGE_SECRET_KEY: 'secret-value',
   STORAGE_BUCKET: 'hrm-dev',
+  AUTH_JWT_SECRET: 'a-sufficiently-long-test-secret-0123456789',
+  DATA_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
 };
 
 describe('loadConfig', () => {
@@ -61,5 +63,21 @@ describe('loadConfig', () => {
         DATABASE_URL: 'postgresql://hrm_app:app_dev_only@db/hrm',
       }),
     ).toThrow(/Development credentials/);
+    expect(() => loadConfig({ ...base, NODE_ENV: 'production' })).toThrow(/Secure in production/);
+    expect(() =>
+      loadConfig({
+        ...base,
+        NODE_ENV: 'production',
+        AUTH_COOKIE_SECURE: 'true',
+        AUTH_JWT_SECRET: 'jwt_secret_dev_only_change_me_0123456789',
+      }),
+    ).toThrow(/Development JWT secret/);
+  });
+
+  it('requires a 32-byte base64 encryption key and a long JWT secret', () => {
+    expect(() =>
+      loadConfig({ ...base, DATA_ENCRYPTION_KEY: Buffer.alloc(16).toString('base64') }),
+    ).toThrow(/exactly 32 bytes/);
+    expect(() => loadConfig({ ...base, AUTH_JWT_SECRET: 'short' })).toThrow(/32 characters/);
   });
 });

@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, Menu, Monitor, Moon, SlidersHorizontal, Sun } from 'lucide-react';
 import { Link, useMatches } from 'react-router';
 import { api } from '@/lib/api';
+import { OrganizationSwitcher, UserMenu } from './account-menus';
 import { type ThemePreference, usePreferences } from '@/stores/preferences';
 
 export interface RouteHandle {
@@ -154,10 +155,15 @@ export function Header({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
       >
         <Menu />
       </Button>
-      <Breadcrumbs />
+      <OrganizationSwitcher />
+      <span className="hidden h-4 w-px bg-border sm:block" aria-hidden="true" />
+      <div className="hidden min-w-0 sm:block">
+        <Breadcrumbs />
+      </div>
       <div className="ml-auto flex items-center gap-1">
         <ApiIndicator />
         <DisplayMenu />
+        <UserMenu />
       </div>
     </header>
   );

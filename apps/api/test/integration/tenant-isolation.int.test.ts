@@ -169,7 +169,7 @@ describe('Tenant isolation (PostgreSQL RLS)', () => {
     ).rejects.toThrow(/append-only/);
   });
 
-  it('the runtime role cannot create organizations directly', async () => {
+  it('the runtime role cannot create organizations outside its tenant context', async () => {
     await expect(
       prisma.withTenant(
         (tx) => tx.organization.create({ data: { slug: `rogue-${suffix}`, name: 'Rogue' } }),

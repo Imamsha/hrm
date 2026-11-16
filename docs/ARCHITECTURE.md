@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Phase 01 — Foundation** (2026-11-16). Decisions are recorded as ADRs in
+Status: **Phase 02 — Authentication, RBAC & SaaS tenancy** (2026-11-16). Decisions are recorded as ADRs in
 [`docs/architecture/`](architecture/).
 
 ## 1. System overview
@@ -131,7 +131,24 @@ rate limiting · body size limits · request-id sanitisation · log redaction ·
 · supply-chain controls (pinned versions, pnpm `allowBuilds` allow-list, minimum release age).
 Authentication, sessions, MFA and authorization arrive in Phase 02.
 
-## 11. ADR index
+## 11. Identity and access (Phase 02)
+
+- **Authentication:** argon2id passwords, 15-minute JWT access tokens, rotating opaque refresh
+  tokens (httpOnly SameSite=Strict cookie on web, OS keystore on mobile), reuse detection, TOTP MFA
+  with encrypted secrets and recovery codes, lockout, password reset via queued e-mail. See ADR-008.
+- **Tenant resolution:** the global `AccessGuard` derives the tenant from the token's `org` claim
+  **after** verifying an active membership in the database, then `withTenant()` + RLS scope all
+  data access. Client tenant hints are ignored. See ADR-009.
+- **Authorization:** per-organization roles over a shared permission catalog; ABAC scopes on role
+  assignments; permission cache in Redis invalidated on every access change.
+- **Modules:** `modules/auth`, `organizations`, `members` (members + invitations), `roles`,
+  `audit`, `notifications` (e-mail), `access` (guard, policy, decorators), wired by
+  `IdentityModule`.
+- **Web:** session bootstrap from the refresh cookie, single-flight refresh on 401, route guards,
+  permission-aware navigation, organization switcher, admin screens (members, roles, organization,
+  audit) and account security.
+
+## 12. ADR index
 
 | ADR                                                        | Title                                                      |
 | ---------------------------------------------------------- | ---------------------------------------------------------- |
@@ -142,3 +159,5 @@ Authentication, sessions, MFA and authorization arrive in Phase 02.
 | [005](architecture/ADR-005-design-system.md)               | Design system across web and mobile                        |
 | [006](architecture/ADR-006-ai-platform.md)                 | AI platform foundation and guardrails                      |
 | [007](architecture/ADR-007-object-storage.md)              | S3-compatible object storage (RustFS instead of MinIO)     |
+| [008](architecture/ADR-008-authentication-and-sessions.md) | Authentication and sessions                                |
+| [009](architecture/ADR-009-authorization-rbac-abac.md)     | Authorization (RBAC + ABAC) and tenant resolution          |

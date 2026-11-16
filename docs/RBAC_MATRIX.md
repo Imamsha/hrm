@@ -1,34 +1,67 @@
 # RBAC / ABAC matrix
 
-Status: **not yet enforced.** Authentication, roles, permissions and ABAC policies are Phase 02.
-Phase 01 provides the enforcement substrate: tenant-scoped RLS, a least-privileged runtime role
-and request context fields (`organizationId`, `userId`) that Phase 02 authentication populates.
+Status: **enforced since Phase 02.** Model and enforcement path: [ADR-009](architecture/ADR-009-authorization-rbac-abac.md).
+Every protected row below is covered by an integration test (allowed role succeeds; others → 403;
+other tenants → 404/400).
+
+## Permission catalog
+
+| Permission                     | Description                                         |
+| ------------------------------ | --------------------------------------------------- |
+| `organization.settings.read`   | View organization profile and settings              |
+| `organization.settings.update` | Update organization profile and settings            |
+| `users.member.read`            | View members (and pending invitations)              |
+| `users.member.invite`          | Invite people, revoke invitations                   |
+| `users.member.update`          | Suspend/reactivate members, change role assignments |
+| `users.member.remove`          | Remove members                                      |
+| `roles.role.read`              | View roles and the permission catalog               |
+| `roles.role.manage`            | Create, update, delete custom roles                 |
+| `audit.log.read`               | View the organization audit log                     |
+| `subscription.plan.read`       | View the subscription                               |
+
+## System roles (created per organization, immutable)
+
+| Permission                   | Owner | Admin | HR admin | Finance | Manager | Employee |
+| ---------------------------- | :---: | :---: | :------: | :-----: | :-----: | :------: |
+| organization.settings.read   |   ✓   |   ✓   |    ✓     |    ✓    |    ✓    |    ✓     |
+| organization.settings.update |   ✓   |   ✓   |          |         |         |          |
+| users.member.read            |   ✓   |   ✓   |    ✓     |         |    ✓    |          |
+| users.member.invite          |   ✓   |   ✓   |    ✓     |         |         |          |
+| users.member.update          |   ✓   |   ✓   |    ✓     |         |         |          |
+| users.member.remove          |   ✓   |   ✓   |          |         |         |          |
+| roles.role.read              |   ✓   |   ✓   |    ✓     |         |         |          |
+| roles.role.manage            |   ✓   |   ✓   |          |         |         |          |
+| audit.log.read               |   ✓   |   ✓   |    ✓     |         |         |          |
+| subscription.plan.read       |   ✓   |   ✓   |          |    ✓    |         |          |
+
+Owner-only actions (beyond permissions): grant/revoke the owner role; suspend or remove another owner.
+
+## Endpoint authorization
+
+| Endpoint                                                                                                                                                              | Requirement                                                                              |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `GET /health*`                                                                                                                                                        | Public                                                                                   |
+| `POST /auth/register`, `/auth/login`, `/auth/mfa/verify`, `/auth/password/forgot`, `/auth/password/reset`                                                             | Public, credential rate limit                                                            |
+| `POST /auth/refresh`                                                                                                                                                  | Public (valid refresh token required)                                                    |
+| `GET /invitations/preview`, `POST /invitations/accept`                                                                                                                | Public, credential rate limit; existing accounts must be signed in as the invited e-mail |
+| `GET /auth/me`, `POST /auth/logout`, `/logout-all`, `/switch-organization`, `/password/change`, `/mfa/totp/*`, `GET/DELETE /auth/sessions`, `GET /auth/login-history` | Any authenticated user (self-service)                                                    |
+| `POST /organizations`                                                                                                                                                 | Any authenticated user (becomes owner of the new organization)                           |
+| `GET /organizations/current`                                                                                                                                          | organization.settings.read                                                               |
+| `PATCH /organizations/current`                                                                                                                                        | organization.settings.update                                                             |
+| `GET /organizations/current/subscription`                                                                                                                             | subscription.plan.read                                                                   |
+| `GET /members`, `GET /invitations`                                                                                                                                    | users.member.read                                                                        |
+| `POST /invitations`, `DELETE /invitations/:id`                                                                                                                        | users.member.invite (+ owner to grant owner)                                             |
+| `PATCH /members/:id`, `PUT /members/:id/roles`                                                                                                                        | users.member.update (+ owner rules)                                                      |
+| `DELETE /members/:id`                                                                                                                                                 | users.member.remove (+ owner rules)                                                      |
+| `GET /roles`, `GET /permissions`                                                                                                                                      | roles.role.read                                                                          |
+| `POST/PATCH/DELETE /roles`                                                                                                                                            | roles.role.manage                                                                        |
+| `GET /audit-logs`                                                                                                                                                     | audit.log.read                                                                           |
 
 ## Access scopes (target model)
 
-| Scope        | Who                                    | Boundary                                                                               |
-| ------------ | -------------------------------------- | -------------------------------------------------------------------------------------- |
-| Platform     | Platform administrators (vendor staff) | Cross-tenant support tooling only via audited platform path; never through tenant APIs |
-| Organization | Organization administrators            | One organization (all companies within it)                                             |
-| HR           | HR administrators                      | Organization or assigned companies/branches                                            |
-| Finance      | Finance users / payroll admins         | Payroll, expenses, reimbursements within assigned entities                             |
-| Manager      | People managers                        | Own reporting tree (direct + indirect reports)                                         |
-| Employee     | Every employee                         | Self-service on own records                                                            |
-
-## Permission naming
-
-`<module>.<resource>.<action>` with actions `read | create | update | delete | approve | export |
-manage`, e.g. `employees.profile.read`, `leave.request.approve`, `payroll.run.manage`.
-ABAC conditions narrow a permission by attributes: `scope=self|team|department|branch|company|org`,
-data sensitivity (e.g. bank/tax fields), and workflow state.
-
-## Phase 01 endpoints
-
-| Endpoint            | Platform | Org admin | HR  | Finance | Manager | Employee | Anonymous                                        |
-| ------------------- | -------- | --------- | --- | ------- | ------- | -------- | ------------------------------------------------ |
-| `GET /health/live`  | ✓        | ✓         | ✓   | ✓       | ✓       | ✓        | ✓                                                |
-| `GET /health`       | ✓        | ✓         | ✓   | ✓       | ✓       | ✓        | ✓ (no secrets; restrict in Phase 14 if required) |
-| `GET /health/ready` | ✓        | ✓         | ✓   | ✓       | ✓       | ✓        | ✓                                                |
-
-The matrix is extended module by module from Phase 02, and every row is backed by an
-authorization test (allowed role succeeds, other roles and other tenants are denied).
+| Scope                                | Status                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------- |
+| ORGANIZATION                         | Enforced                                                                  |
+| SELF                                 | Evaluated by `can()` for owner-attributed resources                       |
+| COMPANY / BRANCH / DEPARTMENT / TEAM | Stored on assignments; evaluated from Phase 03 (deny until then)          |
+| Platform administration              | Not exposed through tenant APIs; separate audited path planned (Phase 14) |

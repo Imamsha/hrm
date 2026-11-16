@@ -1,5 +1,5 @@
-import { HealthScreen } from '@/features/system/health-screen';
+import { HomeScreen } from '@/features/auth/home-screen';
 
 export default function Index() {
-  return <HealthScreen />;
+  return <HomeScreen />;
 }

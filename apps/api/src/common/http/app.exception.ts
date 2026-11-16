@@ -20,6 +20,24 @@ export class AppException extends Error {
     return new AppException(ErrorCode.VALIDATION_FAILED, message, HttpStatus.BAD_REQUEST, details);
   }
 
+  static unauthenticated(message = 'Authentication required') {
+    return new AppException(ErrorCode.UNAUTHENTICATED, message, HttpStatus.UNAUTHORIZED);
+  }
+
+  /** Validation-style rejection for a single field (e.g. wrong current password). */
+  static badRequest(message: string, path?: string) {
+    return new AppException(
+      ErrorCode.VALIDATION_FAILED,
+      message,
+      HttpStatus.BAD_REQUEST,
+      path ? [{ path, message }] : [],
+    );
+  }
+
+  static tooManyRequests(message: string) {
+    return new AppException(ErrorCode.RATE_LIMITED, message, HttpStatus.TOO_MANY_REQUESTS);
+  }
+
   static notFound(entity: string) {
     return new AppException(ErrorCode.NOT_FOUND, `${entity} not found`, HttpStatus.NOT_FOUND);
   }

@@ -37,7 +37,7 @@ the runtime role is subject to RLS regardless.
 in both the dev/test databases and `template1` (so Prisma shadow databases inherit them).
 Migrations also declare them with `IF NOT EXISTS`.
 
-## Phase 02 additions
+## Phase 02 additions (implemented 2026-11-16 — see ADR-009)
 
 - Memberships table; tenant resolved from the authenticated session + membership check.
 - Composite foreign keys `(organization_id, id)` on child tables to make cross-tenant references

@@ -54,6 +54,44 @@ export const envSchema = z
     RATE_LIMIT_TTL_SECONDS: z.coerce.number().int().min(1).default(60),
     RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(300),
 
+    /** Browser origin of the web app; used to build links in e-mails. */
+    APP_WEB_URL: z.url().default('http://localhost:5180'),
+
+    /** HMAC key for access/MFA tokens (HS256). At least 32 random bytes. */
+    AUTH_JWT_SECRET: z.string().min(32, 'Use at least 32 characters'),
+    AUTH_JWT_ISSUER: z.string().default('hrm-api'),
+    AUTH_ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
+    AUTH_MFA_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(900).default(300),
+    /** Absolute session lifetime; refresh-token rotation cannot extend past it. */
+    AUTH_SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
+    AUTH_LOCKOUT_THRESHOLD: z.coerce.number().int().min(3).max(20).default(5),
+    AUTH_LOCKOUT_MINUTES: z.coerce.number().int().min(1).max(1440).default(15),
+    /** `Secure` attribute on the refresh cookie. Must be true behind HTTPS (enforced in production). */
+    AUTH_COOKIE_SECURE: bool.default(false),
+    AUTH_PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
+    AUTH_INVITATION_TTL_DAYS: z.coerce.number().int().min(1).max(30).default(7),
+    /** Rate limit for credential endpoints (login, register, password reset), per minute per IP. */
+    AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
+
+    /** Base64-encoded 32-byte key for AES-256-GCM field encryption (e.g. MFA secrets). */
+    DATA_ENCRYPTION_KEY: z
+      .string()
+      .refine(
+        (v) => /^[A-Za-z0-9+/]+={0,2}$/.test(v) && Buffer.from(v, 'base64').length === 32,
+        'Must be base64 encoding exactly 32 bytes (openssl rand -base64 32)',
+      ),
+
+    /** Trial length for new organizations (business configuration, not a statutory value). */
+    SUBSCRIPTION_TRIAL_DAYS: z.coerce.number().int().min(0).max(365).default(30),
+    SUBSCRIPTION_DEFAULT_PLAN_KEY: z.string().default('trial'),
+
+    SMTP_HOST: z.string().default('localhost'),
+    SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
+    SMTP_SECURE: bool.default(false),
+    SMTP_USER: z.string().default(''),
+    SMTP_PASSWORD: z.string().default(''),
+    SMTP_FROM: z.string().default('HRM Platform <no-reply@hrm.local>'),
+
     AI_PROVIDER: z.enum(['disabled', 'openai-compatible']).default('disabled'),
     AI_BASE_URL: z.string().default(''),
     AI_API_KEY: z.string().default(''),
@@ -97,6 +135,20 @@ export const envSchema = z
           code: 'custom',
           path: ['DATABASE_URL'],
           message: 'Development credentials detected in production',
+        });
+      }
+      if (/dev[_-]only|change[_-]?me/i.test(env.AUTH_JWT_SECRET)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['AUTH_JWT_SECRET'],
+          message: 'Development JWT secret detected in production',
+        });
+      }
+      if (!env.AUTH_COOKIE_SECURE) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['AUTH_COOKIE_SECURE'],
+          message: 'Refresh cookies must be Secure in production',
         });
       }
     }

@@ -67,16 +67,43 @@ RLS: `audit_logs_tenant_select` (SELECT), `audit_logs_tenant_insert` (INSERT WIT
 Triggers: `audit_logs_append_only` (UPDATE/DELETE), `audit_logs_no_truncate`.
 Runtime role privileges: SELECT, INSERT only.
 
+## Tables (Phase 02 — identity, access control, subscriptions)
+
+Identity tables are **global** (a user can belong to several organizations) and have no tenant RLS;
+they are reached only through the identity services. Tenant tables have RLS and composite
+`(organization_id, id)` foreign keys.
+
+| Table                   | Scope   | Purpose / key constraints                                                                                                                                                                                                                                                                                   |
+| ----------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`                 | global  | `email citext UNIQUE` (format CHECK), argon2id `password_hash`, `status`, `mfa_enabled` (CHECK: requires encrypted secret), `mfa_secret_encrypted` (AES-256-GCM), `mfa_recovery_code_hashes text[]`, `failed_login_count ≥ 0`, `locked_until`, `last_login_at`, `password_changed_at`; `updated_at` trigger |
+| `sessions`              | global  | one per device sign-in; `active_organization_id` FK (SET NULL), `expires_at > created_at`, `revoked_at`, `revoke_reason`; index `(user_id, revoked_at)`                                                                                                                                                     |
+| `refresh_tokens`        | global  | `token_hash char(64) UNIQUE` (hex CHECK), `expires_at`, `used_at` (rotation / reuse detection); cascade with session                                                                                                                                                                                        |
+| `auth_events`           | global  | append-only security log (trigger + revoked UPDATE/DELETE/TRUNCATE); enum `auth_event_type`; indexes `(user_id, occurred_at DESC)`, `(email, occurred_at DESC)`                                                                                                                                             |
+| `password_reset_tokens` | global  | `token_hash UNIQUE`, `expires_at`, `used_at` (single use)                                                                                                                                                                                                                                                   |
+| `permissions`           | catalog | `key` PK (`a.b.c` CHECK); seeded by migration; read-only for `hrm_app`                                                                                                                                                                                                                                      |
+| `memberships`           | tenant  | `UNIQUE(organization_id, user_id)`, `UNIQUE(organization_id, id)`; `status` ACTIVE/SUSPENDED; RLS tenant + own-read-without-tenant                                                                                                                                                                          |
+| `roles`                 | tenant  | `UNIQUE(organization_id, key)` (key CHECK), `UNIQUE(organization_id, id)`, `is_system`                                                                                                                                                                                                                      |
+| `role_permissions`      | tenant  | PK `(role_id, permission_key)`; FK `(organization_id, role_id) → roles` CASCADE; FK `permission_key → permissions`                                                                                                                                                                                          |
+| `membership_roles`      | tenant  | FK `(organization_id, membership_id) → memberships` CASCADE, FK `(organization_id, role_id) → roles` RESTRICT; `scope_type` enum + `scope_id` (CHECK: required only for structural scopes); `UNIQUE … NULLS NOT DISTINCT` per assignment                                                                    |
+| `invitations`           | tenant  | `token_hash UNIQUE`, `role_ids uuid[]` (≥ 1), `status`, `expires_at`; partial unique `(organization_id, email) WHERE status = 'PENDING'`                                                                                                                                                                    |
+| `subscription_plans`    | catalog | `key UNIQUE`, `limits jsonb`; seeded `trial`; read-only for `hrm_app`; **no prices modelled**                                                                                                                                                                                                               |
+| `subscriptions`         | tenant  | `UNIQUE(organization_id)`, `status` enum, `trial_ends_at` (CHECK required when TRIALING), period CHECK; no DELETE for `hrm_app`                                                                                                                                                                             |
+
+Functions: `app.current_user_id()` (from `app.user_id`), `app.invitation_tenant(token_hash)`
+(SECURITY DEFINER; returns only the organization id).
+
 ## Migrations
 
-| Migration                                | Contents                                                                                                     |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `20261116000000_platform_foundation`     | extensions (pgcrypto, citext, vector), `app` schema + functions, runtime grants, revoke `_prisma_migrations` |
-| `20261116000100_organizations_and_audit` | enums, `organizations`, `audit_logs`, indexes, FK, CHECKs, triggers, RLS policies, privilege revocations     |
+| Migration                                           | Contents                                                                                                                                                                        |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `20261116000000_platform_foundation`                | extensions (pgcrypto, citext, vector), `app` schema + functions, runtime grants, revoke `_prisma_migrations`                                                                    |
+| `20261116000100_organizations_and_audit`            | enums, `organizations`, `audit_logs`, indexes, FK, CHECKs, triggers, RLS policies, privilege revocations                                                                        |
+| `20261116010000_identity_access_subscriptions`      | Phase 02 tables above, CHECKs, NULL-safe/partial unique indexes, triggers, RLS, `SECURITY DEFINER` invitation lookup, grants (INSERT on organizations under RLS), catalog seeds |
+| `20261116020000_user_scope_policies_without_tenant` | user-scoped read policies apply only without a tenant context (fix found by integration tests)                                                                                  |
 
-Status (2026-11-16): both migrations applied cleanly to fresh `hrm` and `hrm_test` databases
-(PostgreSQL 17.12, pgvector 0.8.7); `prisma migrate diff --from-config-datasource --to-schema
---exit-code` reports **no drift**. The integration-test global setup and CI repeat both checks.
+Status (2026-11-16): all four migrations applied to `hrm` and `hrm_test` (PostgreSQL 17.12,
+pgvector 0.8.7); `prisma migrate diff --from-config-datasource --to-schema --exit-code` reports
+**no drift**. The integration-test global setup and CI repeat both checks.
 
 ## Commands
 

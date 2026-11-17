@@ -10,3 +10,4 @@ apps/api/generated
 apps/mobile/dist
 **/playwright-report
 **/test-results
+apps/mobile/expo-env.d.ts

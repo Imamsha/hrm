@@ -34,7 +34,8 @@ function toItem(m: MemberRow): MemberListItem {
     mfaEnabled: m.user.mfaEnabled,
     lastLoginAt: m.user.lastLoginAt?.toISOString() ?? null,
     joinedAt: m.joinedAt.toISOString(),
-    roles: m.roles.map((r) => r.role),
+    // A role may be assigned organization-wide and with scopes; list it once.
+    roles: [...new Map(m.roles.map((r) => [r.role.id, r.role])).values()],
   };
 }
 

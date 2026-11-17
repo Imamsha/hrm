@@ -10,6 +10,9 @@ import { MembersPage } from '@/features/members/members-page';
 import { OrganizationSettingsPage } from '@/features/organization/organization-settings-page';
 import { OverviewPage } from '@/features/overview/overview-page';
 import { RolesPage } from '@/features/roles/roles-page';
+import { CalendarsPage } from '@/features/structure/calendars-page';
+import { OrgChartPage } from '@/features/structure/org-chart-page';
+import { JobCatalogPage, StructurePage } from '@/features/structure/structure-pages';
 import { SystemStatusPage } from '@/features/system/system-status-page';
 import { NotFoundPage, RouteErrorPage } from './error-pages';
 import { GuestOnly, RequireAuth, RequirePermission } from './guards';
@@ -46,6 +49,42 @@ export const routes: RouteObject[] = [
                 path: 'system/status',
                 element: <SystemStatusPage />,
                 handle: crumb('System status'),
+              },
+              {
+                path: 'organization/structure',
+                handle: crumb('Organization structure'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.ORGANIZATION_STRUCTURE_READ}>
+                    <StructurePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'organization/org-chart',
+                handle: crumb('Org chart'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.ORGANIZATION_STRUCTURE_READ}>
+                    <OrgChartPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'organization/job-catalog',
+                handle: crumb('Job catalog'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.ORGANIZATION_JOB_CATALOG_READ}>
+                    <JobCatalogPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'organization/calendars',
+                handle: crumb('Working days & holidays'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.ORGANIZATION_CALENDAR_READ}>
+                    <CalendarsPage />
+                  </RequirePermission>
+                ),
               },
               {
                 path: 'admin/members',

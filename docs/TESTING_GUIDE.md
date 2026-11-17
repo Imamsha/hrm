@@ -35,6 +35,33 @@ Integration tests use an isolated database (`hrm_test`), Redis DB 1 and bucket `
 (`TEST_*` variables in `.env.example`). The audit log is append-only, so tests create uniquely
 named tenants instead of cleaning up.
 
+## What is covered (Phase 03)
+
+- **Structure (10 integration, `structure.int.test.ts`):** company/legal entity/location/branch
+  lifecycle with audit entries; duplicate code → 409 on `code`, duplicate grade rank → 409 on
+  `rank`; GSTIN-must-embed-PAN and India-only identifiers; branch legal entity of another company
+  rejected; delete-in-use → 409 and archive instead; department tree, self/cyclic and
+  cross-company parents rejected (API **and** database trigger); org chart nesting; work-week
+  occurrence rules (2nd/4th Saturday off), one default per organization, holiday bulk insert and
+  duplicate date → 409, calendar resolution with branch override and organization fallback,
+  invalid patterns and > 366-day ranges → 400; employee role can read but not manage; scoped
+  role assignments (duplicate → 409, owner with a scope → 400, scoped grant does not open
+  organization-wide endpoints, department scope expands to new sub-departments immediately,
+  referenced department cannot be deleted); cross-tenant ids → 404/400, cross-tenant optional
+  reference refused by the same-tenant trigger, cross-tenant scope target refused; every
+  organization's system roles equal `SYSTEM_ROLES` after the data migration.
+- **Unit:** `can()` for COMPANY/BRANCH/TEAM attributes and DEPARTMENT subtrees (missing attribute →
+  deny); org-chart tree building; calendar resolution, occurrence rules, half days, holiday
+  precedence (`@hrm/business-rules`, 21); structure schemas incl. PAN/TAN/GSTIN/CIN and coordinates
+  (`@hrm/validation`).
+- **Web (10):** organization navigation by permission, job catalog guard, read-only lists, create
+  with server 409 mapped to the field, shared-schema validation before any request, Indian
+  identifiers hidden outside India, payload normalisation (blank → null, hidden → null,
+  create-only fields not sent on edit), work-week summaries, month preview, org-chart tree
+  expand/collapse, scoped role assignment dialog.
+- **E2E:** create a company and a two-level department tree through the UI, then see it on the
+  org chart (against the production build and live API).
+
 ## What is covered (Phase 02)
 
 - **Auth (14 integration):** registration provisioning, cookie attributes, duplicate/weak/personal
@@ -84,3 +111,15 @@ named tenants instead of cleaning up.
    permission denied per RBAC matrix row.
 3. Component tests for screens using real API client with stubbed fetch.
 4. Playwright happy path for critical flows.
+
+## Local troubleshooting
+
+- **Integration tests fail in `beforeAll` with 500 / "Stream isn't writeable":** Docker Desktop's
+  port forwarding to Redis on `localhost` (IPv6 `::1`) can stall while `127.0.0.1` still works.
+  `docker restart hrm-redis-1` restores it.
+- **Vitest "Failed to start forks worker" / timeouts during `pnpm turbo run … test`:** the machine
+  is short of memory. Re-run with `--concurrency=3`. jsdom suites allow 20 s per test.
+- **E2E "Unable to reach the server":** the Playwright web server runs `pnpm build`; on a
+  memory-constrained machine the dev API (`node --watch`) can restart meanwhile. Build first,
+  start `pnpm --filter @hrm/web preview`, then run `pnpm --filter @hrm/web test:e2e` (the
+  existing preview server is reused).

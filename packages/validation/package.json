@@ -23,7 +23,8 @@
   },
   "dependencies": {
     "@hrm/shared-types": "workspace:*",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@hrm/business-rules": "workspace:*"
   },
   "devDependencies": {
     "@hrm/eslint-config": "workspace:*",

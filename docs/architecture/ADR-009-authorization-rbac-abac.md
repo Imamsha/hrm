@@ -10,7 +10,7 @@ User ──< Membership (organization, status) ──< MembershipRole (role, sco
 
 - **Permission catalog** — `<module>.<resource>.<action>`, defined once in `@hrm/shared-types` (`PERMISSIONS`) and seeded by migration; a test asserts both match.
 - **Roles** are per organization. Six **system roles** are created with every organization (owner, admin, hr_admin, finance, manager, employee) and are immutable; organizations add **custom roles**.
-- **ABAC scope** lives on the role assignment: `ORGANIZATION | COMPANY | BRANCH | DEPARTMENT | TEAM | SELF`. Phase 02 evaluates `ORGANIZATION` (always) and `SELF` (resource owner = caller). Structural scopes deny until Phase 03 adds the organization structure.
+- **ABAC scope** lives on the role assignment: `ORGANIZATION | COMPANY | BRANCH | DEPARTMENT | TEAM | SELF`. Phase 02 evaluates `ORGANIZATION` (always) and `SELF` (resource owner = caller). Structural scopes (COMPANY / BRANCH / DEPARTMENT / TEAM) are evaluated since Phase 03 — see [ADR-010](ADR-010-organization-structure-and-scoped-access.md).
 
 ## Enforcement path (every request)
 

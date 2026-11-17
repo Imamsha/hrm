@@ -51,6 +51,30 @@ export class AccessService {
           },
         });
         if (!membership) return null;
+
+        // Expand DEPARTMENT scopes to their whole subtree once per resolution (cached below).
+        const deptRoots = [
+          ...new Set(
+            membership.roles
+              .filter((r) => r.scopeType === 'DEPARTMENT' && r.scopeId)
+              .map((r) => r.scopeId as string),
+          ),
+        ];
+        const covered = new Map<string, string[]>();
+        for (const root of deptRoots) {
+          const ids = [root];
+          let frontier = [root];
+          for (let depth = 0; depth < 12 && frontier.length > 0; depth++) {
+            const children = await tx.department.findMany({
+              where: { parentId: { in: frontier } },
+              select: { id: true },
+            });
+            frontier = children.map((c) => c.id).filter((id) => !ids.includes(id));
+            ids.push(...frontier);
+          }
+          covered.set(root, ids);
+        }
+
         const grants = new Map<Permission, ScopedGrant[]>();
         for (const assignment of membership.roles) {
           for (const { permissionKey } of assignment.role.permissions) {
@@ -60,7 +84,13 @@ export class AccessService {
                 (g) => g.scopeType === assignment.scopeType && g.scopeId === assignment.scopeId,
               )
             ) {
-              list.push({ scopeType: assignment.scopeType, scopeId: assignment.scopeId });
+              list.push({
+                scopeType: assignment.scopeType,
+                scopeId: assignment.scopeId,
+                ...(assignment.scopeType === 'DEPARTMENT' && assignment.scopeId
+                  ? { coveredIds: covered.get(assignment.scopeId) ?? [assignment.scopeId] }
+                  : {}),
+              });
             }
             grants.set(permissionKey as Permission, list);
           }

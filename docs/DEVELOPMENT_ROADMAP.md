@@ -6,8 +6,8 @@ approval before the next phase starts.
 | Phase | Scope                                                                                                                                                                                                                                                     | Status                                                      |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | 01    | Foundation & architecture: monorepo, web/mobile/API setup, shared packages, PostgreSQL, Prisma, Redis, BullMQ, Docker, logging, health, Swagger, testing foundation, design system, docs                                                                  | ✅ Done — approved 2026-11-16, CI green                     |
-| 02    | Auth, RBAC & SaaS: registration, login/logout, refresh rotation, password recovery, MFA foundation, users, organizations, memberships, roles, permissions, tenant context from auth, full RLS + ABAC enforcement, subscription foundation, security audit | ✅ Implemented & verified locally — awaiting owner approval |
-| 03    | Organization management: companies, legal entities, branches, departments, teams, designations, job grades, locations, org chart, settings, working days, holiday calendars                                                                               | ⏳                                                          |
+| 02    | Auth, RBAC & SaaS: registration, login/logout, refresh rotation, password recovery, MFA foundation, users, organizations, memberships, roles, permissions, tenant context from auth, full RLS + ABAC enforcement, subscription foundation, security audit | ✅ Done — approved, CI green                                |
+| 03    | Organization management: companies, legal entities, branches, departments, teams, designations, job grades, locations, org chart, settings, working days, holiday calendars                                                                               | 🟡 Implemented & verified locally — awaiting owner approval |
 | 04    | Employee management: directory, profile, personal/employment info, documents, skills, education, experience, history, transfer, promotion, probation, confirmation, lifecycle                                                                             | ⏳                                                          |
 | 05    | Attendance, shifts & leave: clock-in/out, biometric, QR, shifts, rostering, overtime, leave policies/applications/balances, approvals, attendance analytics                                                                                               | ⏳                                                          |
 | 06    | Recruitment & onboarding: requisitions, openings, career portal, candidates, resume parsing, interviews, assessments, offers, onboarding, joining docs, induction                                                                                         | ⏳                                                          |
@@ -26,5 +26,15 @@ approval before the next phase starts.
   export, context menus, virtualization — implemented with the first list-heavy module.
 - Header: organization switcher, company selector, global search, notification center, profile
   menu — need authentication/memberships (Phase 02+).
-- Forms system (React Hook Form + Zod, 1/2/3-column layouts) — Phase 02 (first forms).
+- Forms system (React Hook Form + Zod, 1/2/3-column layouts) — delivered in Phase 02.
+
+## Carried forward from Phase 03
+
+- Reference pickers load one page of up to 200 records; add search-as-you-type pickers when
+  organizations exceed that (Phase 04, with employee pickers).
+- Org chart shows structure only; people, managers and headcount arrive with employee records
+  (Phase 04).
+- Mobile: no organization screens yet (holiday list for employees planned with Phase 05/13).
+- Effective-dated structure history (e.g. department re-parenting over time) is not modelled;
+  employee assignment history in Phase 04 records who belonged where and when.
 - Dedicated worker process, Redis-backed rate limiting store, Nginx, monitoring — Phase 14.

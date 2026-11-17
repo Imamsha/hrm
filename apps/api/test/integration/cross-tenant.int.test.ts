@@ -5,7 +5,14 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { testEnv } from './env.js';
-import { type Account, type Api, api, registerAccount, startApp } from './helpers.js';
+import {
+  type Account,
+  type Api,
+  api,
+  registerAccount,
+  startApp,
+  systemRolePermissions,
+} from './helpers.js';
 
 let app: NestExpressApplication;
 let client: Api;
@@ -153,7 +160,7 @@ describe('row-level security on access-control tables', () => {
       b.accessToken,
     );
     const me = await client.get('/auth/me', switched.body.data.accessToken);
-    expect(me.body.data.permissions).toEqual(['organization.settings.read']);
+    expect(me.body.data.permissions).toEqual(systemRolePermissions('employee'));
   });
 
   it('blocks writing access rows into another tenant', async () => {

@@ -9,5 +9,6 @@ export * from './components/form.js';
 export * from './components/input.js';
 export * from './components/label.js';
 export * from './components/overlays.js';
+export * from './components/tabs.js';
 export * from './lib/cn.js';
 export type { PaginationState, RowSelectionState, SortingState } from '@tanstack/react-table';

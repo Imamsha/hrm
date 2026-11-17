@@ -63,6 +63,20 @@ model Organization {
   subscription    Subscription?
   activeSessions  Session[]
 
+  companies        Company[]
+  legalEntities    LegalEntity[]
+  locations        Location[]
+  branches         Branch[]
+  costCenters      CostCenter[]
+  departments      Department[]
+  teams            Team[]
+  jobGrades        JobGrade[]
+  designations     Designation[]
+  workWeeks        WorkWeek[]
+  workWeekRules    WorkWeekRule[]
+  holidayCalendars HolidayCalendar[]
+  holidays         Holiday[]
+
   @@index([status])
   @@map("organizations")
 }
@@ -412,4 +426,326 @@ model Subscription {
   plan         SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
 
   @@map("subscriptions")
+}
+
+// =============================================================================================
+// Organization structure (Phase 03). Tenant-owned, RLS. Required parents use composite
+// (organization_id, id) foreign keys; optional references use a plain FK plus the
+// app.enforce_same_tenant() trigger (Prisma cannot model optional composite FKs).
+// =============================================================================================
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+
+  @@map("record_status")
+}
+
+model Company {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  code            String       @db.VarChar(20)
+  name            String       @db.VarChar(200)
+  /// ISO 3166-1 alpha-2.
+  countryCode     String       @default("IN") @map("country_code") @db.Char(2)
+  /// Overrides the organization default when set.
+  defaultCurrency String?      @map("default_currency") @db.Char(3)
+  timezone        String?      @db.VarChar(64)
+  status          RecordStatus @default(ACTIVE)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntities LegalEntity[]
+  branches      Branch[]
+  departments   Department[]
+  costCenters   CostCenter[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@map("companies")
+}
+
+model LegalEntity {
+  id                   String       @id @default(uuid(7)) @db.Uuid
+  organizationId       String       @map("organization_id") @db.Uuid
+  companyId            String       @map("company_id") @db.Uuid
+  code                 String       @db.VarChar(20)
+  legalName            String       @map("legal_name") @db.VarChar(300)
+  countryCode          String       @default("IN") @map("country_code") @db.Char(2)
+  /// India: Permanent Account Number.
+  pan                  String?      @db.Char(10)
+  /// India: Tax Deduction and Collection Account Number.
+  tan                  String?      @db.Char(10)
+  /// India: GST Identification Number.
+  gstin                String?      @db.Char(15)
+  /// India: Corporate Identification Number.
+  cin                  String?      @db.Char(21)
+  /// Registration number for non-Indian jurisdictions.
+  registrationNumber   String?      @map("registration_number") @db.VarChar(50)
+  registeredLocationId String?      @map("registered_location_id") @db.Uuid
+  status               RecordStatus @default(ACTIVE)
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  company            Company      @relation(fields: [organizationId, companyId], references: [organizationId, id], onDelete: Restrict)
+  registeredLocation Location?    @relation(fields: [registeredLocationId], references: [id], onDelete: Restrict)
+  branches           Branch[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@index([organizationId, companyId])
+  @@map("legal_entities")
+}
+
+model Location {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  code           String       @db.VarChar(20)
+  name           String       @db.VarChar(200)
+  addressLine1   String       @map("address_line1") @db.VarChar(200)
+  addressLine2   String?      @map("address_line2") @db.VarChar(200)
+  city           String       @db.VarChar(100)
+  state          String?      @db.VarChar(100)
+  postalCode     String?      @map("postal_code") @db.VarChar(20)
+  countryCode    String       @default("IN") @map("country_code") @db.Char(2)
+  timezone       String?      @db.VarChar(64)
+  /// WGS84 coordinates (geofencing in Phase 05).
+  latitude       Decimal?     @db.Decimal(9, 6)
+  longitude      Decimal?     @db.Decimal(9, 6)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branches      Branch[]
+  legalEntities LegalEntity[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@map("locations")
+}
+
+model Branch {
+  id                String       @id @default(uuid(7)) @db.Uuid
+  organizationId    String       @map("organization_id") @db.Uuid
+  companyId         String       @map("company_id") @db.Uuid
+  legalEntityId     String?      @map("legal_entity_id") @db.Uuid
+  locationId        String?      @map("location_id") @db.Uuid
+  code              String       @db.VarChar(20)
+  name              String       @db.VarChar(200)
+  timezone          String?      @db.VarChar(64)
+  workWeekId        String?      @map("work_week_id") @db.Uuid
+  holidayCalendarId String?      @map("holiday_calendar_id") @db.Uuid
+  status            RecordStatus @default(ACTIVE)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  company         Company          @relation(fields: [organizationId, companyId], references: [organizationId, id], onDelete: Restrict)
+  legalEntity     LegalEntity?     @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  location        Location?        @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  workWeek        WorkWeek?        @relation(fields: [workWeekId], references: [id], onDelete: Restrict)
+  holidayCalendar HolidayCalendar? @relation(fields: [holidayCalendarId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@index([organizationId, companyId])
+  @@map("branches")
+}
+
+model CostCenter {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  companyId      String?      @map("company_id") @db.Uuid
+  code           String       @db.VarChar(20)
+  name           String       @db.VarChar(200)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  company      Company?     @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  departments  Department[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@map("cost_centers")
+}
+
+model Department {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  companyId      String       @map("company_id") @db.Uuid
+  /// Parent department (sub-departments). Cycles are rejected by a trigger.
+  parentId       String?      @map("parent_id") @db.Uuid
+  costCenterId   String?      @map("cost_center_id") @db.Uuid
+  code           String       @db.VarChar(20)
+  name           String       @db.VarChar(200)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  company      Company      @relation(fields: [organizationId, companyId], references: [organizationId, id], onDelete: Restrict)
+  parent       Department?  @relation("DepartmentTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children     Department[] @relation("DepartmentTree")
+  costCenter   CostCenter?  @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
+  teams        Team[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@index([organizationId, companyId])
+  @@index([organizationId, parentId])
+  @@map("departments")
+}
+
+model Team {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  departmentId   String       @map("department_id") @db.Uuid
+  code           String       @db.VarChar(20)
+  name           String       @db.VarChar(200)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  department   Department   @relation(fields: [organizationId, departmentId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@index([organizationId, departmentId])
+  @@map("teams")
+}
+
+model JobGrade {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  code           String       @db.VarChar(20)
+  name           String       @db.VarChar(100)
+  /// Seniority order: 1 = most junior. Unique per organization.
+  rank           Int
+  description    String?      @db.VarChar(500)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  designations Designation[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, rank])
+  @@unique([organizationId, id])
+  @@map("job_grades")
+}
+
+model Designation {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  jobGradeId     String?      @map("job_grade_id") @db.Uuid
+  code           String       @db.VarChar(20)
+  /// Job title, e.g. "Senior Software Engineer".
+  name           String       @db.VarChar(200)
+  description    String?      @db.VarChar(1000)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  jobGrade     JobGrade?    @relation(fields: [jobGradeId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@map("designations")
+}
+
+enum DayType {
+  FULL
+  HALF
+  OFF
+
+  @@map("day_type")
+}
+
+/// Working-days pattern ("work week"), e.g. Mon–Fri, or Mon–Sat with 2nd/4th Saturday off.
+model WorkWeek {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String   @db.VarChar(100)
+  description    String?  @db.VarChar(500)
+  /// Used for branches without an explicit work week. At most one per organization.
+  isDefault      Boolean  @default(false) @map("is_default")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  rules        WorkWeekRule[]
+  branches     Branch[]
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, id])
+  @@map("work_weeks")
+}
+
+model WorkWeekRule {
+  id             String  @id @default(uuid(7)) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  workWeekId     String  @map("work_week_id") @db.Uuid
+  /// ISO weekday 1 (Mon) – 7 (Sun).
+  weekday        Int     @db.SmallInt
+  /// 0 = every occurrence; 1–5 = nth occurrence in the month.
+  occurrence     Int     @default(0) @db.SmallInt
+  dayType        DayType @map("day_type")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  workWeek     WorkWeek     @relation(fields: [organizationId, workWeekId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([workWeekId, weekday, occurrence])
+  @@index([organizationId])
+  @@map("work_week_rules")
+}
+
+enum HolidayKind {
+  PUBLIC
+  OPTIONAL
+
+  @@map("holiday_kind")
+}
+
+model HolidayCalendar {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String   @db.VarChar(100)
+  description    String?  @db.VarChar(500)
+  /// Used for branches without an explicit calendar. At most one per organization.
+  isDefault      Boolean  @default(false) @map("is_default")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  holidays     Holiday[]
+  branches     Branch[]
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, id])
+  @@map("holiday_calendars")
+}
+
+model Holiday {
+  id             String      @id @default(uuid(7)) @db.Uuid
+  organizationId String      @map("organization_id") @db.Uuid
+  calendarId     String      @map("calendar_id") @db.Uuid
+  date           DateTime    @db.Date
+  name           String      @db.VarChar(200)
+  kind           HolidayKind @default(PUBLIC)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  calendar     HolidayCalendar @relation(fields: [organizationId, calendarId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([calendarId, date])
+  @@index([organizationId, date])
+  @@map("holidays")
 }

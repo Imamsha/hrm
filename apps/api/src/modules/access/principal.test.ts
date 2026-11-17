@@ -34,8 +34,32 @@ describe('ABAC can()', () => {
     expect(hasOrganizationWide(p, READ)).toBe(false);
   });
 
-  it('denies structural scopes until the organization structure exists', () => {
-    const p = principal([[READ, [{ scopeType: 'DEPARTMENT', scopeId: 'd-1' }]]]);
-    expect(can(p, READ, { departmentId: 'd-1' })).toBe(false);
+  it('covers a department and its expanded sub-departments only', () => {
+    const p = principal([
+      [READ, [{ scopeType: 'DEPARTMENT', scopeId: 'd-eng', coveredIds: ['d-eng', 'd-platform'] }]],
+    ]);
+    expect(can(p, READ, { departmentId: 'd-eng' })).toBe(true);
+    expect(can(p, READ, { departmentId: 'd-platform' })).toBe(true);
+    expect(can(p, READ, { departmentId: 'd-sales' })).toBe(false);
+    expect(can(p, READ, { companyId: 'c-1' })).toBe(false); // attribute missing → deny
+    expect(hasOrganizationWide(p, READ)).toBe(false);
+  });
+
+  it('matches company, branch and team scopes by attribute', () => {
+    const p = principal([
+      [
+        READ,
+        [
+          { scopeType: 'COMPANY', scopeId: 'c-1' },
+          { scopeType: 'BRANCH', scopeId: 'b-pune' },
+          { scopeType: 'TEAM', scopeId: 't-qa' },
+        ],
+      ],
+    ]);
+    expect(can(p, READ, { companyId: 'c-1' })).toBe(true);
+    expect(can(p, READ, { companyId: 'c-2', branchId: 'b-pune' })).toBe(true);
+    expect(can(p, READ, { companyId: 'c-2', teamId: 't-qa' })).toBe(true);
+    expect(can(p, READ, { companyId: 'c-2', branchId: 'b-delhi', teamId: 't-dev' })).toBe(false);
+    expect(can(p, READ)).toBe(false);
   });
 });

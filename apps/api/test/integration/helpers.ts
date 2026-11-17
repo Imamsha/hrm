@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Secret, TOTP } from 'otpauth';
 import request from 'supertest';
+import { SYSTEM_ROLES } from '@hrm/shared-types';
 import { expect } from 'vitest';
 import { createApp } from '../../src/bootstrap.js';
 import { integrationConfig, testEnv } from './env.js';
@@ -142,4 +143,9 @@ export function tokenFromLink(text: string, path: string): string {
   const match = new RegExp(`${path}\\?token=([A-Za-z0-9_%-]+)`).exec(text);
   if (!match?.[1]) throw new Error(`No ${path} link in e-mail`);
   return decodeURIComponent(match[1]);
+}
+
+/** The sorted permissions a system role grants, as returned by /auth/me. */
+export function systemRolePermissions(key: string): string[] {
+  return [...(SYSTEM_ROLES.find((r) => r.key === key)?.permissions ?? [])].sort();
 }

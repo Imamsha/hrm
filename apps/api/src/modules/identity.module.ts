@@ -10,6 +10,7 @@ import { InvitationsController } from './members/invitations.controller.js';
 import { InvitationsService } from './members/invitations.service.js';
 import { MembersController } from './members/members.controller.js';
 import { MembersService } from './members/members.service.js';
+import { RoleAssignmentsService } from './members/role-assignments.service.js';
 import { OrganizationProvisioner } from './organizations/organization-provisioner.service.js';
 import { OrganizationsController } from './organizations/organizations.controller.js';
 import { OrganizationsService } from './organizations/organizations.service.js';
@@ -39,6 +40,7 @@ import { RolesService } from './roles/roles.service.js';
     OrganizationProvisioner,
     OrganizationsService,
     MembersService,
+    RoleAssignmentsService,
     InvitationsService,
     RolesService,
     AuditService,

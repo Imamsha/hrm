@@ -6,6 +6,11 @@ export type ScopeType = 'ORGANIZATION' | 'COMPANY' | 'BRANCH' | 'DEPARTMENT' | '
 export interface ScopedGrant {
   scopeType: ScopeType;
   scopeId: string | null;
+  /**
+   * DEPARTMENT scope only: the department and all of its sub-departments, expanded when access
+   * is resolved, so a manager of "Engineering" also covers "Engineering › Platform".
+   */
+  coveredIds?: string[];
 }
 
 /** Authenticated caller, resolved by the AccessGuard for every non-public request. */
@@ -31,8 +36,10 @@ export interface ResourceAttributes {
  * ABAC evaluation. A permission applies when granted at a scope that contains the resource:
  *  - ORGANIZATION: always (the tenant boundary itself is enforced by RLS).
  *  - SELF: only when the resource belongs to the caller.
- *  - COMPANY / BRANCH / DEPARTMENT / TEAM: evaluated once the organization structure exists
- *    (Phase 03). Until then such grants never match (deny by default).
+ *  - COMPANY / BRANCH / TEAM: the resource carries the matching attribute.
+ *  - DEPARTMENT: the resource's department is the scoped department or one of its descendants.
+ * Resources must supply every structural attribute they have (company, branch, department, team);
+ * a missing attribute never matches (deny by default).
  */
 export function can(
   principal: AuthPrincipal,
@@ -47,8 +54,17 @@ export function can(
         return true;
       case 'SELF':
         return resource?.ownerUserId !== undefined && resource.ownerUserId === principal.userId;
-      default:
-        return false;
+      case 'COMPANY':
+        return g.scopeId !== null && resource?.companyId === g.scopeId;
+      case 'BRANCH':
+        return g.scopeId !== null && resource?.branchId === g.scopeId;
+      case 'TEAM':
+        return g.scopeId !== null && resource?.teamId === g.scopeId;
+      case 'DEPARTMENT': {
+        const dept = resource?.departmentId;
+        if (dept === undefined || g.scopeId === null) return false;
+        return (g.coveredIds ?? [g.scopeId]).includes(dept);
+      }
     }
   });
 }

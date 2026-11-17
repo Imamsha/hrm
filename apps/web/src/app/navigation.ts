@@ -2,6 +2,10 @@ import { PERMISSIONS, type Permission } from '@hrm/shared-types';
 import {
   Activity,
   Building2,
+  CalendarDays,
+  Briefcase,
+  Network,
+  Workflow,
   KeyRound,
   LayoutDashboard,
   type LucideIcon,
@@ -33,6 +37,35 @@ export const navigation: NavSection[] = [
     items: [
       { label: 'Overview', to: '/', icon: LayoutDashboard },
       { label: 'System status', to: '/system/status', icon: Activity },
+    ],
+  },
+  {
+    label: 'Organization',
+    items: [
+      {
+        label: 'Structure',
+        to: '/organization/structure',
+        icon: Workflow,
+        permission: PERMISSIONS.ORGANIZATION_STRUCTURE_READ,
+      },
+      {
+        label: 'Org chart',
+        to: '/organization/org-chart',
+        icon: Network,
+        permission: PERMISSIONS.ORGANIZATION_STRUCTURE_READ,
+      },
+      {
+        label: 'Job catalog',
+        to: '/organization/job-catalog',
+        icon: Briefcase,
+        permission: PERMISSIONS.ORGANIZATION_JOB_CATALOG_READ,
+      },
+      {
+        label: 'Working days & holidays',
+        to: '/organization/calendars',
+        icon: CalendarDays,
+        permission: PERMISSIONS.ORGANIZATION_CALENDAR_READ,
+      },
     ],
   },
   {

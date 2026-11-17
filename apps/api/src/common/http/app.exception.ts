@@ -50,6 +50,11 @@ export class AppException extends Error {
     return new AppException(ErrorCode.CONFLICT, message, HttpStatus.CONFLICT);
   }
 
+  /** Conflict attributable to one field (e.g. duplicate code), so forms can highlight it. */
+  static conflictOn(message: string, path: string) {
+    return new AppException(ErrorCode.CONFLICT, message, HttpStatus.CONFLICT, [{ path, message }]);
+  }
+
   static tenantContextMissing() {
     return new AppException(
       ErrorCode.TENANT_CONTEXT_MISSING,

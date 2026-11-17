@@ -26,7 +26,12 @@ import { Page, PageHeader } from '@/app/layout/page';
 import { useAuth, usePermission } from '@/features/auth/auth-store';
 import { api, errorMessage } from '@/lib/api';
 import { useMembersPage, usePendingInvitations, useRoles } from './api';
-import { ChangeRolesDialog, ConfirmDialog, InviteMemberDialog } from './member-dialogs';
+import {
+  ChangeRolesDialog,
+  ConfirmDialog,
+  InviteMemberDialog,
+  RoleAssignmentsDialog,
+} from './member-dialogs';
 
 type PendingAction = { kind: 'suspend' | 'reactivate' | 'remove'; member: MemberListItem };
 
@@ -123,6 +128,7 @@ export function MembersPage() {
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [rolesFor, setRolesFor] = useState<MemberListItem | null>(null);
+  const [scopesFor, setScopesFor] = useState<MemberListItem | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -238,6 +244,13 @@ export function MembersPage() {
                       }}
                     >
                       Change roles
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setScopesFor(m);
+                      }}
+                    >
+                      Scoped roles
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onSelect={() => {
@@ -380,6 +393,13 @@ export function MembersPage() {
       </div>
 
       <InviteMemberDialog open={inviteOpen} onOpenChange={setInviteOpen} roles={roles.data ?? []} />
+      <RoleAssignmentsDialog
+        member={scopesFor}
+        onClose={() => {
+          setScopesFor(null);
+        }}
+        roles={roles.data ?? []}
+      />
       <ChangeRolesDialog
         member={rolesFor}
         onClose={() => {

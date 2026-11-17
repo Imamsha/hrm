@@ -78,3 +78,42 @@ test('mobile navigation opens as a drawer', async ({ page, isMobile }) => {
   await expect(page).toHaveURL(/\/system\/status$/);
   await expect(page.getByRole('dialog')).toBeHidden();
 });
+
+test('build structure through the UI and see it on the org chart', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Covered on desktop');
+  await registerViaUi(page);
+
+  await page.goto('/organization/structure?tab=companies');
+  await page.getByRole('button', { name: /New company/ }).click();
+  let dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Code/).fill('ACME-IN');
+  await dialog.getByLabel(/^Name/).fill('Acme India');
+  await dialog.getByRole('button', { name: 'Create company' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(
+    page.getByRole('table', { name: 'Companies' }).getByText('Acme India'),
+  ).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Departments' }).click();
+  await page.getByRole('button', { name: /New department/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Company/).selectOption({ label: 'Acme India (ACME-IN)' });
+  await dialog.getByLabel(/^Code/).fill('ENG');
+  await dialog.getByLabel(/^Name/).fill('Engineering');
+  await dialog.getByRole('button', { name: 'Create department' }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.getByRole('button', { name: /New department/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Company/).selectOption({ label: 'Acme India (ACME-IN)' });
+  await dialog.getByLabel(/^Code/).fill('PLAT');
+  await dialog.getByLabel(/^Name/).fill('Platform');
+  await dialog.getByLabel(/^Parent department/).selectOption({ label: 'Engineering (ENG)' });
+  await dialog.getByRole('button', { name: 'Create department' }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.goto('/organization/org-chart');
+  const tree = page.getByRole('tree', { name: 'Acme India departments' });
+  await expect(tree.getByText('Engineering')).toBeVisible();
+  await expect(tree.getByText('Platform')).toBeVisible();
+});

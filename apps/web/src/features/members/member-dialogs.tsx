@@ -1,5 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { InvitationItem, MemberListItem, RoleDetails } from '@hrm/shared-types';
+import type {
+  InvitationItem,
+  MemberListItem,
+  RoleDetails,
+  ScopedRoleAssignment,
+} from '@hrm/shared-types';
 import {
   Alert,
   Button,
@@ -12,12 +17,14 @@ import {
   FormField,
   FormGrid,
   Input,
+  Select,
 } from '@hrm/ui-web';
 import { inviteMemberSchema } from '@hrm/validation';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useRefOptions } from '@/features/structure/api';
 import { api, errorMessage } from '@/lib/api';
 import { applyServerErrors } from '@/lib/forms';
 
@@ -287,5 +294,202 @@ export function ConfirmDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const SCOPE_SOURCES = {
+  COMPANY: { label: 'Company', path: '/companies' },
+  BRANCH: { label: 'Branch', path: '/branches' },
+  DEPARTMENT: { label: 'Department (and sub-departments)', path: '/departments' },
+  TEAM: { label: 'Team', path: '/teams' },
+} as const;
+type ScopeKind = keyof typeof SCOPE_SOURCES;
+
+function scopeLabel(a: ScopedRoleAssignment): string {
+  if (a.scopeType === 'ORGANIZATION') return 'Whole organization';
+  const kind = `${a.scopeType.charAt(0)}${a.scopeType.slice(1).toLowerCase()}`;
+  return `${kind}: ${a.scope ? `${a.scope.name} (${a.scope.code})` : 'removed'}`;
+}
+
+/** Lists a member's role assignments and adds roles limited to a company, branch, department or team. */
+export function RoleAssignmentsDialog({
+  member,
+  onClose,
+  roles,
+}: {
+  member: MemberListItem | null;
+  onClose: () => void;
+  roles: RoleDetails[];
+}) {
+  return (
+    <Dialog
+      open={member !== null}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
+      <DialogContent size="lg">
+        <DialogHeader
+          title="Scoped roles"
+          description={
+            member
+              ? `${member.fullName}: roles that apply only within part of the organization.`
+              : undefined
+          }
+        />
+        {member ? <RoleAssignmentsBody member={member} roles={roles} onDone={onClose} /> : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RoleAssignmentsBody({
+  member,
+  roles,
+  onDone,
+}: {
+  member: MemberListItem;
+  roles: RoleDetails[];
+  onDone: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const key = ['members', member.membershipId, 'role-assignments'];
+  const assignments = useQuery({
+    queryKey: key,
+    queryFn: () =>
+      api.get<ScopedRoleAssignment[]>(`/members/${member.membershipId}/role-assignments`),
+  });
+  const [roleId, setRoleId] = useState('');
+  const [scopeType, setScopeType] = useState<ScopeKind>('DEPARTMENT');
+  const [scopeId, setScopeId] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const source = SCOPE_SOURCES[scopeType];
+  const targets = useRefOptions({ path: source.path }, { status: 'ACTIVE' });
+
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['members'] });
+  };
+  const add = useMutation({
+    mutationFn: () =>
+      api.post(`/members/${member.membershipId}/role-assignments`, { roleId, scopeType, scopeId }),
+    onSuccess: async () => {
+      setRoleId('');
+      setScopeId('');
+      setError(null);
+      await refresh();
+    },
+    onError: (err) => {
+      setError(errorMessage(err));
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) =>
+      api.delete(`/members/${member.membershipId}/role-assignments/${id}`),
+    onSuccess: refresh,
+    onError: (err) => {
+      setError(errorMessage(err));
+    },
+  });
+  // The owner role is organization-wide only (enforced by the API as well).
+  const assignable = roles.filter((r) => r.key !== 'owner');
+
+  return (
+    <>
+      <DialogBody className="flex flex-col gap-4">
+        {error ? <Alert tone="destructive">{error}</Alert> : null}
+        {assignments.isPending ? (
+          <p className="text-muted-foreground">Loading…</p>
+        ) : assignments.isError ? (
+          <Alert tone="destructive">{errorMessage(assignments.error)}</Alert>
+        ) : (
+          <ul
+            className="divide-y divide-border rounded-md border border-border"
+            aria-label="Current assignments"
+          >
+            {assignments.data.map((a) => (
+              <li key={a.id} className="flex items-center gap-3 px-3 py-2">
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{a.role.name}</span>
+                  <span className="block text-sm text-muted-foreground">{scopeLabel(a)}</span>
+                </span>
+                {a.scopeType !== 'ORGANIZATION' ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Remove ${a.role.name} for ${a.scope?.name ?? 'scope'}`}
+                    disabled={remove.isPending}
+                    onClick={() => {
+                      remove.mutate(a.id);
+                    }}
+                  >
+                    Remove
+                  </Button>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Managed in Change roles</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3">
+          <legend className="px-1 font-medium">Add a scoped role</legend>
+          <FormGrid columns={3}>
+            <FormField label="Role" required>
+              <Select
+                value={roleId}
+                onChange={(e) => {
+                  setRoleId(e.target.value);
+                }}
+                options={assignable.map((r) => ({ value: r.id, label: r.name }))}
+              />
+            </FormField>
+            <FormField label="Applies to" required>
+              <Select
+                value={scopeType}
+                onChange={(e) => {
+                  setScopeType(e.target.value as ScopeKind);
+                  setScopeId('');
+                }}
+                options={Object.entries(SCOPE_SOURCES).map(([value, s]) => ({
+                  value,
+                  label: s.label,
+                }))}
+              />
+            </FormField>
+            <FormField label={source.label.replace(/ \(.*\)$/, '')} required>
+              <Select
+                value={scopeId}
+                disabled={targets.isPending}
+                onChange={(e) => {
+                  setScopeId(e.target.value);
+                }}
+                placeholder={targets.isPending ? 'Loading…' : 'Select…'}
+                options={targets.data ?? []}
+              />
+            </FormField>
+          </FormGrid>
+          <p className="text-sm text-muted-foreground">
+            A scoped role applies to records inside that part of the organization as each module
+            adopts it. Organization-wide screens still require an organization-wide role.
+          </p>
+          <div>
+            <Button
+              size="sm"
+              disabled={!roleId || !scopeId || add.isPending}
+              onClick={() => {
+                add.mutate();
+              }}
+            >
+              Add assignment
+            </Button>
+          </div>
+        </fieldset>
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="outline" onClick={onDone}>
+          Done
+        </Button>
+      </DialogFooter>
+    </>
   );
 }

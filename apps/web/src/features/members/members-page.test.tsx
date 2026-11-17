@@ -128,6 +128,63 @@ describe('members page', () => {
     });
   });
 
+  it('adds a department-scoped role from the scoped roles dialog', async () => {
+    signInAs(['users.member.read', 'users.member.update', 'organization.structure.read']);
+    const user = userEvent.setup();
+    const dept = '0195f1d2-0000-7000-8000-0000000d0001';
+    const assignments = [
+      {
+        id: 'a-1',
+        role: { id: roles[1]?.id, key: 'employee', name: 'Employee' },
+        scopeType: 'ORGANIZATION',
+        scope: null,
+      },
+    ];
+    const calls = stubFetch((c) => {
+      if (c.url.includes('/role-assignments')) {
+        if (c.method === 'POST') {
+          return ok({
+            id: 'a-2',
+            role: { id: roles[1]?.id, key: 'employee', name: 'Employee' },
+            scopeType: 'DEPARTMENT',
+            scope: { id: dept, code: 'ENG', name: 'Engineering' },
+          });
+        }
+        return ok(assignments);
+      }
+      if (c.url.includes('/departments')) {
+        return ok([{ id: dept, code: 'ENG', name: 'Engineering', status: 'ACTIVE' }], {
+          pagination: { page: 1, pageSize: 200, total: 1, totalPages: 1 },
+        });
+      }
+      if (c.url.includes('/members')) {
+        return ok([member(2)], { pagination: { page: 1, pageSize: 25, total: 1, totalPages: 1 } });
+      }
+      if (c.url.endsWith('/roles')) return ok(roles);
+      return ok([]);
+    });
+    renderAt('/admin/members');
+    await user.click(await screen.findByRole('button', { name: 'Actions for Person 2' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Scoped roles' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByText('Whole organization')).toBeInTheDocument();
+    // The owner role is never offered for a scope.
+    expect(within(dialog).queryByRole('option', { name: 'Owner' })).not.toBeInTheDocument();
+    await user.selectOptions(within(dialog).getByLabelText(/^Role/), roles[1]?.id ?? '');
+    await waitFor(() => {
+      expect(within(dialog).getByRole('option', { name: 'Engineering (ENG)' })).toBeInTheDocument();
+    });
+    await user.selectOptions(within(dialog).getByLabelText(/^Department/), dept);
+    await user.click(within(dialog).getByRole('button', { name: 'Add assignment' }));
+    await waitFor(() => {
+      expect(calls.find((c) => c.method === 'POST')?.body).toEqual({
+        roleId: roles[1]?.id,
+        scopeType: 'DEPARTMENT',
+        scopeId: dept,
+      });
+    });
+  });
+
   it('offers only permitted row actions and never on the current user', async () => {
     signInAs(['users.member.read']);
     stubFetch((c) => {

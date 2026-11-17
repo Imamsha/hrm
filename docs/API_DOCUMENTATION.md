@@ -118,8 +118,57 @@ Permissions per endpoint: [RBAC_MATRIX.md](RBAC_MATRIX.md).
 Paginated responses carry `meta.pagination`; the client helper `api.getPage<T>(path)` returns
 `{ items, pagination }`.
 
+## Organization structure (Phase 03)
+
+Permissions per endpoint: [RBAC_MATRIX.md](RBAC_MATRIX.md). Every write is audited
+(`company.created`, `branch.updated`, …). Shared Zod schemas: `@hrm/validation` (`structure.ts`);
+transport types: `@hrm/shared-types` (`structure.ts`).
+
+Standard resources — each supports `GET /<resource>` (paginated), `GET /<resource>/:id`,
+`POST`, `PATCH /:id` (partial; `status: ACTIVE | INACTIVE` archives) and `DELETE /:id`:
+
+| Resource          | Create body (required in bold)                                                                                                                   | List filters / sort keys                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| `/companies`      | **code, name**, countryCode (default IN), defaultCurrency, timezone                                                                              | `status`, `search`; sort `code, name, status`                        |
+| `/legal-entities` | **companyId, code, legalName**, countryCode, pan, tan, gstin, cin (India only; GSTIN must contain PAN), registrationNumber, registeredLocationId | `companyId`; sort `code, name`                                       |
+| `/locations`      | **code, name, addressLine1, city**, addressLine2, state, postalCode, countryCode, timezone, latitude + longitude (decimal strings, both or none) | sort `code, name, city`                                              |
+| `/branches`       | **companyId, code, name**, legalEntityId (same company), locationId, timezone, workWeekId, holidayCalendarId                                     | `companyId`; sort `code, name, company`                              |
+| `/cost-centers`   | **code, name**, companyId (empty = organization-wide)                                                                                            | `companyId`; sort `code, name`                                       |
+| `/departments`    | **companyId, code, name**, parentId (same company, no cycles, depth ≤ 10), costCenterId                                                          | `companyId`, `parentId` (uuid or `root`); sort `code, name, company` |
+| `/teams`          | **departmentId, code, name**                                                                                                                     | `departmentId`; sort `code, name, department`                        |
+| `/job-grades`     | **code, name, rank** (1–1000, unique), description                                                                                               | sort `rank, code, name`                                              |
+| `/designations`   | **code, name**, jobGradeId, description                                                                                                          | `jobGradeId`; sort `code, name, grade`                               |
+
+Codes are upper-cased; 1–20 letters, digits, `-` or `_`, unique per organization. Owning parents
+(`companyId` of branches/departments/legal entities) cannot be changed after creation.
+
+Errors: duplicate code/rank → **409** with `details[0].path` = the field; deleting a record that is
+still referenced → **409** (archive instead); invalid or cross-tenant references, cycles, a branch
+legal entity of another company → **400** with the field path; unknown or other-tenant ids → **404**.
+
+Calendars and org chart:
+
+| Method         | Path                                         | Body / query                                                                                        | Success                                                                                                                     |
+| -------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| GET / POST     | `/work-weeks`                                | POST: `name, description?, isDefault?, rules[{weekday 1–7, occurrence 0–5, dayType FULL/HALF/OFF}]` | 200 `WorkWeekItem[]` / 201 `WorkWeekItem`; setting a default clears the previous one                                        |
+| PATCH / DELETE | `/work-weeks/:id`                            | PATCH: any field; `rules` replaces the whole set                                                    | 200 / 204 (in use by a branch → 409)                                                                                        |
+| GET / POST     | `/holiday-calendars`                         | POST: `name, description?, isDefault?`                                                              | 200 `HolidayCalendarItem[]` / 201                                                                                           |
+| PATCH / DELETE | `/holiday-calendars/:id`                     |                                                                                                     | 200 / 204 (in use → 409; holidays cascade)                                                                                  |
+| GET / POST     | `/holiday-calendars/:id/holidays`            | GET `year?`; POST `holidays[{date, name, kind PUBLIC/OPTIONAL}]` (1–200)                            | 200 `HolidayItem[]` / 201 (a date already in the calendar → 409)                                                            |
+| PATCH / DELETE | `/holiday-calendars/:id/holidays/:holidayId` |                                                                                                     | 200 / 204                                                                                                                   |
+| GET            | `/calendar/resolve`                          | `from, to` (ISO dates, ≤ 366 days), `branchId?`                                                     | 200 `ResolvedCalendar`: per-day kind and `workingDays` (half day = 0.5); branch settings fall back to organization defaults |
+| GET            | `/org-chart`                                 | `includeInactive?`                                                                                  | 200 `OrgChart`: companies → branches, nested departments → teams                                                            |
+
+Scoped role assignments (ABAC):
+
+| Method | Path                                          | Body                                                                       | Success                                                   |
+| ------ | --------------------------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------- |
+| GET    | `/members/:id/role-assignments`               | —                                                                          | 200 `ScopedRoleAssignment[]` (organization-wide + scoped) |
+| POST   | `/members/:id/role-assignments`               | `roleId, scopeType (COMPANY/BRANCH/DEPARTMENT/TEAM/ORGANIZATION), scopeId` | 201; duplicate → 409; owner role with a scope → 400       |
+| DELETE | `/members/:id/role-assignments/:assignmentId` | —                                                                          | 204; last owner protected (409)                           |
+
 ## Planned (per roadmap)
 
-Phase 03 adds companies, legal entities, branches, departments, teams, designations, job grades,
-locations and holiday calendars. Later phases add the module routes listed in
+Phase 04 adds employee records (which carry the company / branch / department / team attributes
+that scoped roles apply to). Later phases add the module routes listed in
 `MASTER_PROJECT_INSTRUCTIONS.md` §8.

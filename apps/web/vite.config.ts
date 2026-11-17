@@ -34,5 +34,7 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     css: false,
+    // jsdom + user-event interactions are slow when turbo runs every package in parallel.
+    testTimeout: 20_000,
   },
 });

@@ -8,6 +8,7 @@ import {
   OTHER_PASSWORD,
   registerAccount,
   startApp,
+  systemRolePermissions,
   tokenFromLink,
   uniqueEmail,
   waitForEmail,
@@ -71,7 +72,7 @@ describe('role-based access control', () => {
 
     const me = await client.get('/auth/me', employee.accessToken);
     expect(me.body.data.activeOrganization.organizationId).toBe(owner.organizationId);
-    expect(me.body.data.permissions).toEqual(['organization.settings.read']);
+    expect(me.body.data.permissions).toEqual(systemRolePermissions('employee'));
     expect(me.body.data.user.emailVerified).toBe(true);
 
     expect((await client.get('/organizations/current', employee.accessToken)).status).toBe(200);
@@ -268,7 +269,7 @@ describe('invitations for existing accounts', () => {
     expect(switched.status).toBe(200);
     const meA = await client.get('/auth/me', switched.body.data.accessToken);
     expect(meA.body.data.activeOrganization.organizationId).toBe(ownerA.organizationId);
-    expect(meA.body.data.permissions).toEqual(['organization.settings.read', 'users.member.read']);
+    expect(meA.body.data.permissions).toEqual(systemRolePermissions('manager'));
   });
 
   it('rejects inviting an existing member or a duplicate pending invitation', async () => {

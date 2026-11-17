@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Phase 02 — Authentication, RBAC & SaaS tenancy** (2026-11-16). Decisions are recorded as ADRs in
+Status: **Phase 03 — Organization structure** (2026-11-17). Decisions are recorded as ADRs in
 [`docs/architecture/`](architecture/).
 
 ## 1. System overview
@@ -148,16 +148,37 @@ Authentication, sessions, MFA and authorization arrive in Phase 02.
   permission-aware navigation, organization switcher, admin screens (members, roles, organization,
   audit) and account security.
 
-## 12. ADR index
+## 12. Organization structure (Phase 03)
 
-| ADR                                                        | Title                                                      |
-| ---------------------------------------------------------- | ---------------------------------------------------------- |
-| [001](architecture/ADR-001-monorepo-and-toolchain.md)      | Monorepo, toolchain and dependency policy                  |
-| [002](architecture/ADR-002-backend-runtime-and-testing.md) | NestJS 12 ESM runtime, validation and test runners         |
-| [003](architecture/ADR-003-database-roles-and-rls.md)      | Database roles, tenant context and Row-Level Security      |
-| [004](architecture/ADR-004-api-conventions.md)             | API conventions: versioning, envelope, errors, request IDs |
-| [005](architecture/ADR-005-design-system.md)               | Design system across web and mobile                        |
-| [006](architecture/ADR-006-ai-platform.md)                 | AI platform foundation and guardrails                      |
-| [007](architecture/ADR-007-object-storage.md)              | S3-compatible object storage (RustFS instead of MinIO)     |
-| [008](architecture/ADR-008-authentication-and-sessions.md) | Authentication and sessions                                |
-| [009](architecture/ADR-009-authorization-rbac-abac.md)     | Authorization (RBAC + ABAC) and tenant resolution          |
+- **Module:** `modules/structure` — companies, legal entities, locations, branches, cost centers,
+  departments, teams (`StructureController`), job grades and designations
+  (`JobCatalogController`), work weeks, holiday calendars, calendar resolution and the org chart
+  (`CalendarsController`). Services share `auditedCreate/Update/Delete`, `pagedList` and
+  `mapWriteError` (constraint violation → 409/400 with the field path).
+- **Integrity in depth:** services pre-validate references to return field errors; database
+  triggers (same tenant, same company, department hierarchy, scope targets) are the backstop.
+- **Calendars:** pure resolution in `@hrm/business-rules` (`resolveDays`, `countWorkingDays`),
+  reused by attendance/leave/payroll later.
+- **Structural ABAC:** `can()` evaluates COMPANY/BRANCH/TEAM attributes and DEPARTMENT subtrees;
+  department coverage is resolved into the cached access and invalidated on tree changes.
+  Scoped assignments are managed under `/members/:id/role-assignments`.
+- **Web:** Organization section — Structure (tabbed), Org chart, Job catalog, Working days &
+  holidays — built on a config-driven `EntityManager` (server-side list, filters, shared-schema
+  forms, archive/delete) and the new `Tabs`/`Textarea` primitives in `@hrm/ui-web`.
+
+See ADR-010.
+
+## 13. ADR index
+
+| ADR                                                                     | Title                                                        |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------ |
+| [001](architecture/ADR-001-monorepo-and-toolchain.md)                   | Monorepo, toolchain and dependency policy                    |
+| [002](architecture/ADR-002-backend-runtime-and-testing.md)              | NestJS 12 ESM runtime, validation and test runners           |
+| [003](architecture/ADR-003-database-roles-and-rls.md)                   | Database roles, tenant context and Row-Level Security        |
+| [004](architecture/ADR-004-api-conventions.md)                          | API conventions: versioning, envelope, errors, request IDs   |
+| [005](architecture/ADR-005-design-system.md)                            | Design system across web and mobile                          |
+| [006](architecture/ADR-006-ai-platform.md)                              | AI platform foundation and guardrails                        |
+| [007](architecture/ADR-007-object-storage.md)                           | S3-compatible object storage (RustFS instead of MinIO)       |
+| [008](architecture/ADR-008-authentication-and-sessions.md)              | Authentication and sessions                                  |
+| [009](architecture/ADR-009-authorization-rbac-abac.md)                  | Authorization (RBAC + ABAC) and tenant resolution            |
+| [010](architecture/ADR-010-organization-structure-and-scoped-access.md) | Organization structure, calendars and structural ABAC scopes |

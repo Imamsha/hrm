@@ -6,6 +6,8 @@ import { AcceptInvitationPage } from '@/features/auth/accept-invitation-page';
 import { LoginPage } from '@/features/auth/login-page';
 import { ForgotPasswordPage, ResetPasswordPage } from '@/features/auth/password-recovery-pages';
 import { RegisterPage } from '@/features/auth/register-page';
+import { EmployeesPage } from '@/features/employees/employees-page';
+import { EmployeeProfilePage, MyProfilePage } from '@/features/employees/profile-pages';
 import { MembersPage } from '@/features/members/members-page';
 import { OrganizationSettingsPage } from '@/features/organization/organization-settings-page';
 import { OverviewPage } from '@/features/overview/overview-page';
@@ -49,6 +51,33 @@ export const routes: RouteObject[] = [
                 path: 'system/status',
                 element: <SystemStatusPage />,
                 handle: crumb('System status'),
+              },
+              {
+                path: 'people/employees',
+                handle: crumb('Employees'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_EMPLOYEE_READ}>
+                    <EmployeesPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'people/employees/:id',
+                handle: crumb('Employee profile'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_EMPLOYEE_READ}>
+                    <EmployeeProfilePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/profile',
+                handle: crumb('My profile'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <MyProfilePage />
+                  </RequirePermission>
+                ),
               },
               {
                 path: 'organization/structure',

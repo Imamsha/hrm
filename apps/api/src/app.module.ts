@@ -16,6 +16,7 @@ import { AccessGuard } from './modules/access/access.guard.js';
 import { AccessModule } from './modules/access/access.module.js';
 import { AUTH_RATE_LIMITED } from './modules/access/decorators.js';
 import { AiModule } from './modules/ai/ai.module.js';
+import { EmployeesModule } from './modules/employees/employees.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { IdentityModule } from './modules/identity.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
@@ -66,6 +67,7 @@ export class AppModule {
         HealthModule,
         IdentityModule,
         StructureModule,
+        EmployeesModule,
       ],
       providers: [
         // Order matters: rate limiting runs before authentication work.

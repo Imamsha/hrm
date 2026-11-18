@@ -6,11 +6,19 @@ export type FormValues = Record<string, string>;
 export interface FieldDef {
   name: string;
   label: string;
-  kind?: 'text' | 'textarea' | 'number' | 'select' | 'ref';
+  kind?: 'text' | 'textarea' | 'number' | 'select' | 'ref' | 'date' | 'email' | 'checkbox';
   options?: SelectOption[];
   ref?: RefSource;
   /** Filters `ref` options by another field's current value, e.g. legal entities by company. */
   refFilter?: { field: string; param: string };
+  /** Fixed query parameters for `ref` options (e.g. only active employees). */
+  refParams?: Record<string, string>;
+  /** Value sent when left empty (default: null for optional fields). */
+  blank?: string;
+  /** Leave the field out of the body when empty ("keep the current value"). */
+  omitIfBlank?: boolean;
+  /** Starts a titled group of fields. */
+  section?: string;
   required?: boolean;
   /** Set on create only; shown read-only when editing (e.g. the owning company). */
   createOnly?: boolean;
@@ -32,8 +40,10 @@ export function toPayload(
     if (editing && f.createOnly) continue;
     const visible = f.show ? f.show(values) : true;
     const raw = (values[f.name] ?? '').trim();
-    if (!visible) body[f.name] = null;
-    else if (raw === '') body[f.name] = f.required ? '' : null;
+    if (f.omitIfBlank && raw === '') continue;
+    if (f.kind === 'checkbox') body[f.name] = raw === 'true';
+    else if (!visible) body[f.name] = null;
+    else if (raw === '') body[f.name] = f.blank ?? (f.required ? '' : null);
     else body[f.name] = raw;
   }
   if (editing && values.status) body.status = values.status;

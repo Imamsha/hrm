@@ -6,6 +6,7 @@ import type { AuthPrincipal } from './principal.js';
 export const IS_PUBLIC = 'hrm:isPublic';
 export const REQUIRED_PERMISSIONS = 'hrm:requiredPermissions';
 export const AUTH_RATE_LIMITED = 'hrm:authRateLimited';
+export const SCOPED_PERMISSIONS = 'hrm:scopedPermissions';
 
 /** Route is reachable without authentication (health, login, register, password reset, ...). */
 export const Public = () => SetMetadata(IS_PUBLIC, true);
@@ -16,6 +17,14 @@ export const Public = () => SetMetadata(IS_PUBLIC, true);
  */
 export const RequirePermissions = (...permissions: Permission[]) =>
   SetMetadata(REQUIRED_PERMISSIONS, permissions);
+
+/**
+ * Every listed permission must be granted at **some** scope (organization-wide or scoped to a
+ * company/branch/department/team/self). The service then restricts the data to the scopes held
+ * (`can()` / scope filters). Use only where the service applies that restriction.
+ */
+export const RequireScopedPermissions = (...permissions: Permission[]) =>
+  SetMetadata(SCOPED_PERMISSIONS, permissions);
 
 /** Applies the stricter credential-endpoint rate limit (AUTH_RATE_LIMIT_MAX per minute per IP). */
 export const AuthRateLimited = () => SetMetadata(AUTH_RATE_LIMITED, true);

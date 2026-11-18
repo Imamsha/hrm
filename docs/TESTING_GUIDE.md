@@ -35,6 +35,29 @@ Integration tests use an isolated database (`hrm_test`), Redis DB 1 and bucket `
 (`TEST_*` variables in `.env.example`). The audit log is append-only, so tests create uniquely
 named tenants instead of cleaning up.
 
+## What is covered (Phase 04)
+
+- **Employees (10 integration, `employees.int.test.ts`):** numbering from settings incl. skipping
+  manual collisions; duplicate number / work e-mail → 409 on the field; placement consistency
+  (department of another company, team of another department) in the API **and** the database
+  trigger; field errors; directory filters (department subtree, branch, search, sort allow-list);
+  job changes (start-date rules, closing the previous record, one future change, circular
+  reporting), append-only history (UPDATE/DELETE rejected, no DELETE privilege on employees),
+  overlap exclusion; probation extend/confirm; separation start/withdraw/complete with login
+  suspension and rejoining; collections (unique address type and skill, single primary contact,
+  merged-record validation, unknown collection 404); bank/PAN/UAN encryption at rest, masking,
+  audited reveal; document upload with content sniffing, streamed download equality, delete;
+  self-service (own profile only, limited fields, no directory); department-scoped HR (subtree
+  visibility, 404 outside, scoped hiring, settings organization-wide only); cross-tenant ids,
+  companies and managers; RLS with no tenant context.
+- **Unit:** current-placement selection, scope filters, ABAC attributes, masks, date arithmetic;
+  magic-byte sniffing, file-name sanitising, Content-Disposition; employee schemas (blank → null,
+  date ordering, IFSC/PAN/UAN, numbering, self-service key stripping).
+- **Web (5):** People navigation by permission, directory server filters and pre-submit
+  validation, profile tabs/actions by access flags, job-change prefill, job history, payload
+  normalisation (checkbox, omit-if-blank, explicit blank). **Mobile (2):** My profile, not linked.
+- **E2E:** add an employee through the UI, add an address, see them in the directory.
+
 ## What is covered (Phase 03)
 
 - **Structure (10 integration, `structure.int.test.ts`):** company/legal entity/location/branch

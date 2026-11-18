@@ -2,6 +2,8 @@ import { PERMISSIONS, type Permission } from '@hrm/shared-types';
 import {
   Activity,
   Building2,
+  IdCard,
+  UserRound,
   CalendarDays,
   Briefcase,
   Network,
@@ -37,6 +39,23 @@ export const navigation: NavSection[] = [
     items: [
       { label: 'Overview', to: '/', icon: LayoutDashboard },
       { label: 'System status', to: '/system/status', icon: Activity },
+    ],
+  },
+  {
+    label: 'People',
+    items: [
+      {
+        label: 'Employees',
+        to: '/people/employees',
+        icon: IdCard,
+        permission: PERMISSIONS.EMPLOYEES_EMPLOYEE_READ,
+      },
+      {
+        label: 'My profile',
+        to: '/me/profile',
+        icon: UserRound,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
     ],
   },
   {

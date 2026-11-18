@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Phase 03 — Organization structure** (2026-11-17). Decisions are recorded as ADRs in
+Status: **Phase 04 — Employee management** (2026-11-18). Decisions are recorded as ADRs in
 [`docs/architecture/`](architecture/).
 
 ## 1. System overview
@@ -168,17 +168,37 @@ Authentication, sessions, MFA and authorization arrive in Phase 02.
 
 See ADR-010.
 
-## 13. ADR index
+## 13. Employee management (Phase 04)
 
-| ADR                                                                     | Title                                                        |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------ |
-| [001](architecture/ADR-001-monorepo-and-toolchain.md)                   | Monorepo, toolchain and dependency policy                    |
-| [002](architecture/ADR-002-backend-runtime-and-testing.md)              | NestJS 12 ESM runtime, validation and test runners           |
-| [003](architecture/ADR-003-database-roles-and-rls.md)                   | Database roles, tenant context and Row-Level Security        |
-| [004](architecture/ADR-004-api-conventions.md)                          | API conventions: versioning, envelope, errors, request IDs   |
-| [005](architecture/ADR-005-design-system.md)                            | Design system across web and mobile                          |
-| [006](architecture/ADR-006-ai-platform.md)                              | AI platform foundation and guardrails                        |
-| [007](architecture/ADR-007-object-storage.md)                           | S3-compatible object storage (RustFS instead of MinIO)       |
-| [008](architecture/ADR-008-authentication-and-sessions.md)              | Authentication and sessions                                  |
-| [009](architecture/ADR-009-authorization-rbac-abac.md)                  | Authorization (RBAC + ABAC) and tenant resolution            |
-| [010](architecture/ADR-010-organization-structure-and-scoped-access.md) | Organization structure, calendars and structural ABAC scopes |
+- **Module:** `modules/employees` — `EmployeesService` (directory, profile, joining, numbering,
+  account link, reports), `EmploymentService` (job changes, probation, separation, rejoining),
+  `EmployeeRecordsService` (seven profile collections, one generic implementation for HR and
+  self-service), `EmployeeSensitiveService` (encrypted bank/PAN/UAN, audited reveal),
+  `EmployeeDocumentsService` (S3 upload/stream/delete). Controllers: `/employees` (HR) and
+  `/me/employee` (self-service).
+- **Effective dating:** `employment_records` with an exclusion constraint (no overlaps), one open
+  record, append-only history trigger; "current placement" = record in force today.
+- **Scoped access:** `@RequireScopedPermissions` lets any-scope grants through the guard; services
+  filter lists with `employeeScopeWhere` and authorize records with `can()` (404 outside scope).
+- **Web:** People section — Employees directory (server filters), profile with tabs (overview, job
+  history, personal, background, bank & tax, documents, reports) shared with **My profile**;
+  forms built on the extracted `ResourceForm` (date/checkbox/section fields).
+- **Mobile:** read-only My profile screen.
+
+See ADR-011.
+
+## 14. ADR index
+
+| ADR                                                                     | Title                                                            |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [001](architecture/ADR-001-monorepo-and-toolchain.md)                   | Monorepo, toolchain and dependency policy                        |
+| [002](architecture/ADR-002-backend-runtime-and-testing.md)              | NestJS 12 ESM runtime, validation and test runners               |
+| [003](architecture/ADR-003-database-roles-and-rls.md)                   | Database roles, tenant context and Row-Level Security            |
+| [004](architecture/ADR-004-api-conventions.md)                          | API conventions: versioning, envelope, errors, request IDs       |
+| [005](architecture/ADR-005-design-system.md)                            | Design system across web and mobile                              |
+| [006](architecture/ADR-006-ai-platform.md)                              | AI platform foundation and guardrails                            |
+| [007](architecture/ADR-007-object-storage.md)                           | S3-compatible object storage (RustFS instead of MinIO)           |
+| [008](architecture/ADR-008-authentication-and-sessions.md)              | Authentication and sessions                                      |
+| [009](architecture/ADR-009-authorization-rbac-abac.md)                  | Authorization (RBAC + ABAC) and tenant resolution                |
+| [010](architecture/ADR-010-organization-structure-and-scoped-access.md) | Organization structure, calendars and structural ABAC scopes     |
+| [011](architecture/ADR-011-employee-management.md)                      | Employee records, effective-dated job history and sensitive data |

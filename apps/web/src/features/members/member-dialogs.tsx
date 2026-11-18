@@ -129,6 +129,7 @@ function InviteForm({ roles, onDone }: { roles: RoleDetails[]; onDone: () => voi
   return (
     <form
       noValidate
+      className="flex min-h-0 flex-1 flex-col"
       onSubmit={(e) =>
         void form.handleSubmit((v) => {
           invite.mutate(v);

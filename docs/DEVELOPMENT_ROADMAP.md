@@ -7,8 +7,8 @@ approval before the next phase starts.
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | 01    | Foundation & architecture: monorepo, web/mobile/API setup, shared packages, PostgreSQL, Prisma, Redis, BullMQ, Docker, logging, health, Swagger, testing foundation, design system, docs                                                                  | ✅ Done — approved 2026-11-16, CI green                     |
 | 02    | Auth, RBAC & SaaS: registration, login/logout, refresh rotation, password recovery, MFA foundation, users, organizations, memberships, roles, permissions, tenant context from auth, full RLS + ABAC enforcement, subscription foundation, security audit | ✅ Done — approved, CI green                                |
-| 03    | Organization management: companies, legal entities, branches, departments, teams, designations, job grades, locations, org chart, settings, working days, holiday calendars                                                                               | 🟡 Implemented & verified locally — awaiting owner approval |
-| 04    | Employee management: directory, profile, personal/employment info, documents, skills, education, experience, history, transfer, promotion, probation, confirmation, lifecycle                                                                             | ⏳                                                          |
+| 03    | Organization management: companies, legal entities, branches, departments, teams, designations, job grades, locations, org chart, settings, working days, holiday calendars                                                                               | ✅ Done — approved 2026-11-18, CI green                     |
+| 04    | Employee management: directory, profile, personal/employment info, documents, skills, education, experience, history, transfer, promotion, probation, confirmation, lifecycle                                                                             | 🟡 Implemented & verified locally — awaiting owner approval |
 | 05    | Attendance, shifts & leave: clock-in/out, biometric, QR, shifts, rostering, overtime, leave policies/applications/balances, approvals, attendance analytics                                                                                               | ⏳                                                          |
 | 06    | Recruitment & onboarding: requisitions, openings, career portal, candidates, resume parsing, interviews, assessments, offers, onboarding, joining docs, induction                                                                                         | ⏳                                                          |
 | 07    | India payroll: structures, earnings, deductions, EPF, ESI, PT, TDS, regimes, runs, payslips, arrears, approvals, bank files, F&F                                                                                                                          | ⏳                                                          |
@@ -31,10 +31,21 @@ approval before the next phase starts.
 ## Carried forward from Phase 03
 
 - Reference pickers load one page of up to 200 records; add search-as-you-type pickers when
-  organizations exceed that (Phase 04, with employee pickers).
-- Org chart shows structure only; people, managers and headcount arrive with employee records
-  (Phase 04).
+  organizations exceed that (still open after Phase 04 — manager picker included).
+- Org chart shows structure only; reporting lines are available per employee (direct reports,
+  manager) since Phase 04 — a people org chart view is still open.
 - Mobile: no organization screens yet (holiday list for employees planned with Phase 05/13).
 - Effective-dated structure history (e.g. department re-parenting over time) is not modelled;
   employee assignment history in Phase 04 records who belonged where and when.
 - Dedicated worker process, Redis-backed rate limiting store, Nginx, monitoring — Phase 14.
+
+## Carried forward from Phase 04
+
+- Salary structures and salary-revision history — Phase 07 (payroll).
+- Approval workflow for employee self-service changes — Phase 10 (workflow engine); Phase 04
+  applies self-edits directly for contact and background data only.
+- Document malware scanning and retention policies — Phase 10 / 14.
+- Statutory registrations beyond PAN/UAN (ESIC, PT, LWF) — Phase 07; Aadhaar deliberately not
+  collected (ADR-011).
+- Bulk employee import (CSV) and directory export — with the DataTable export work.
+- Mobile: read-only "My profile" only; editing and documents on mobile — Phase 13.

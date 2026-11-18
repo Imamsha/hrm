@@ -6,7 +6,12 @@ import { AppException } from '../../common/http/app.exception.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { TokenService } from '../../infrastructure/security/token.service.js';
 import { AccessService } from './access.service.js';
-import { type AuthenticatedRequest, IS_PUBLIC, REQUIRED_PERMISSIONS } from './decorators.js';
+import {
+  type AuthenticatedRequest,
+  IS_PUBLIC,
+  REQUIRED_PERMISSIONS,
+  SCOPED_PERMISSIONS,
+} from './decorators.js';
 import { type AuthPrincipal, hasOrganizationWide } from './principal.js';
 
 /**
@@ -16,7 +21,8 @@ import { type AuthPrincipal, hasOrganizationWide } from './principal.js';
  *  3. re-validates the active membership in the token's organization against the database
  *     (cached ≤ 60 s, invalidated immediately on access changes) — the tenant context is derived
  *     only from this verified membership, never from client input;
- *  4. enforces @RequirePermissions at ORGANIZATION scope.
+ *  4. enforces @RequirePermissions at ORGANIZATION scope and @RequireScopedPermissions at any
+ *     scope (the service then limits data to the scopes held).
  * Public routes still get a principal when a valid token is present (OptionalPrincipal).
  */
 @Injectable()
@@ -36,6 +42,8 @@ export class AccessGuard implements CanActivate {
     const required =
       this.reflector.getAllAndOverride<Permission[] | undefined>(REQUIRED_PERMISSIONS, targets) ??
       [];
+    const scoped =
+      this.reflector.getAllAndOverride<Permission[] | undefined>(SCOPED_PERMISSIONS, targets) ?? [];
     const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
     const header = req.headers.authorization;
@@ -64,6 +72,12 @@ export class AccessGuard implements CanActivate {
       if (!principal.organizationId) throw AppException.tenantContextMissing();
       for (const permission of required) {
         if (!hasOrganizationWide(principal, permission)) throw AppException.forbidden();
+      }
+    }
+    if (scoped.length > 0) {
+      if (!principal.organizationId) throw AppException.tenantContextMissing();
+      for (const permission of scoped) {
+        if (!principal.grants.get(permission)?.length) throw AppException.forbidden();
       }
     }
     return true;

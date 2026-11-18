@@ -18,12 +18,12 @@ pnpm db:deploy                # apply migrations (as hrm_migrator)
 pnpm dev                      # API :3100 (docs /api/docs), web :5180, Expo dev server
 ```
 
-| Service                  | Host port           | Notes                                                  |
-| ------------------------ | ------------------- | ------------------------------------------------------ |
-| PostgreSQL 17 + pgvector | 5434                | DBs `hrm`, `hrm_test`; roles `hrm_migrator`, `hrm_app` |
-| Redis 7.4                | 6380                | password-protected, AOF, `noeviction`                  |
-| RustFS (S3)              | 9000 / console 9001 | bucket auto-created in dev                             |
-| Mailpit                  | SMTP 1025 / UI 8025 | captures all outgoing email                            |
+| Service                  | Host port           | Notes                                                                                                                                                 |
+| ------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PostgreSQL 17 + pgvector | 5434                | DBs `hrm`, `hrm_test`; roles `hrm_migrator`, `hrm_app`; `btree_gist` (trusted) is created by the Phase 04 migration — managed databases must allow it |
+| Redis 7.4                | 6380                | password-protected, AOF, `noeviction`                                                                                                                 |
+| RustFS (S3)              | 9000 / console 9001 | bucket auto-created in dev                                                                                                                            |
+| Mailpit                  | SMTP 1025 / UI 8025 | captures all outgoing email                                                                                                                           |
 
 Ports avoid the natively installed PostgreSQL (5432) / Redis (6379) and ports used by other local
 projects on the development machine (5433, 3000, 5173). App ports: API **3100**, web dev **5180**,

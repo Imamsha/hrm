@@ -77,6 +77,10 @@ model Organization {
   holidayCalendars HolidayCalendar[]
   holidays         Holiday[]
 
+  employeeSettings  EmployeeSettings?
+  employees         Employee[]
+  employmentRecords EmploymentRecord[]
+
   @@index([status])
   @@map("organizations")
 }
@@ -265,6 +269,7 @@ model Membership {
   organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   user         User             @relation(fields: [userId], references: [id], onDelete: Restrict)
   roles        MembershipRole[]
+  employee     Employee?
 
   @@unique([organizationId, userId])
   @@unique([organizationId, id])
@@ -455,11 +460,12 @@ model Company {
   createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  legalEntities LegalEntity[]
-  branches      Branch[]
-  departments   Department[]
-  costCenters   CostCenter[]
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntities     LegalEntity[]
+  branches          Branch[]
+  departments       Department[]
+  costCenters       CostCenter[]
+  employmentRecords EmploymentRecord[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, id])
@@ -488,10 +494,11 @@ model LegalEntity {
   createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  company            Company      @relation(fields: [organizationId, companyId], references: [organizationId, id], onDelete: Restrict)
-  registeredLocation Location?    @relation(fields: [registeredLocationId], references: [id], onDelete: Restrict)
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  company            Company            @relation(fields: [organizationId, companyId], references: [organizationId, id], onDelete: Restrict)
+  registeredLocation Location?          @relation(fields: [registeredLocationId], references: [id], onDelete: Restrict)
   branches           Branch[]
+  employmentRecords  EmploymentRecord[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, id])
@@ -542,12 +549,13 @@ model Branch {
   createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  company         Company          @relation(fields: [organizationId, companyId], references: [organizationId, id], onDelete: Restrict)
-  legalEntity     LegalEntity?     @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
-  location        Location?        @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  workWeek        WorkWeek?        @relation(fields: [workWeekId], references: [id], onDelete: Restrict)
-  holidayCalendar HolidayCalendar? @relation(fields: [holidayCalendarId], references: [id], onDelete: Restrict)
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  company           Company            @relation(fields: [organizationId, companyId], references: [organizationId, id], onDelete: Restrict)
+  legalEntity       LegalEntity?       @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  location          Location?          @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  workWeek          WorkWeek?          @relation(fields: [workWeekId], references: [id], onDelete: Restrict)
+  holidayCalendar   HolidayCalendar?   @relation(fields: [holidayCalendarId], references: [id], onDelete: Restrict)
+  employmentRecords EmploymentRecord[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, id])
@@ -565,9 +573,10 @@ model CostCenter {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  company      Company?     @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  departments  Department[]
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  company           Company?           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  departments       Department[]
+  employmentRecords EmploymentRecord[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, id])
@@ -587,12 +596,13 @@ model Department {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  company      Company      @relation(fields: [organizationId, companyId], references: [organizationId, id], onDelete: Restrict)
-  parent       Department?  @relation("DepartmentTree", fields: [parentId], references: [id], onDelete: Restrict)
-  children     Department[] @relation("DepartmentTree")
-  costCenter   CostCenter?  @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
-  teams        Team[]
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  company           Company            @relation(fields: [organizationId, companyId], references: [organizationId, id], onDelete: Restrict)
+  parent            Department?        @relation("DepartmentTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children          Department[]       @relation("DepartmentTree")
+  costCenter        CostCenter?        @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
+  teams             Team[]
+  employmentRecords EmploymentRecord[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, id])
@@ -611,8 +621,9 @@ model Team {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  department   Department   @relation(fields: [organizationId, departmentId], references: [organizationId, id], onDelete: Restrict)
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  department        Department         @relation(fields: [organizationId, departmentId], references: [organizationId, id], onDelete: Restrict)
+  employmentRecords EmploymentRecord[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, id])
@@ -632,8 +643,9 @@ model JobGrade {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  designations Designation[]
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  designations      Designation[]
+  employmentRecords EmploymentRecord[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, rank])
@@ -653,8 +665,9 @@ model Designation {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  jobGrade     JobGrade?    @relation(fields: [jobGradeId], references: [id], onDelete: Restrict)
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  jobGrade          JobGrade?          @relation(fields: [jobGradeId], references: [id], onDelete: Restrict)
+  employmentRecords EmploymentRecord[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, id])
@@ -748,4 +761,424 @@ model Holiday {
   @@unique([calendarId, date])
   @@index([organizationId, date])
   @@map("holidays")
+}
+
+// =============================================================================================
+// Phase 04 — employee management
+// =============================================================================================
+
+enum EmployeeStatus {
+  ACTIVE
+  ON_NOTICE
+  SEPARATED
+
+  @@map("employee_status")
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+  CONSULTANT
+
+  @@map("employment_type")
+}
+
+enum ProbationStatus {
+  NOT_APPLICABLE
+  ON_PROBATION
+  CONFIRMED
+
+  @@map("probation_status")
+}
+
+enum Gender {
+  FEMALE
+  MALE
+  NON_BINARY
+  OTHER
+  UNDISCLOSED
+
+  @@map("gender")
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+  SEPARATED
+  UNDISCLOSED
+
+  @@map("marital_status")
+}
+
+enum EmploymentChangeType {
+  JOINING
+  TRANSFER
+  PROMOTION
+  REDESIGNATION
+  MANAGER_CHANGE
+  EMPLOYMENT_TYPE_CHANGE
+  REORGANIZATION
+  REJOINING
+
+  @@map("employment_change_type")
+}
+
+enum SeparationType {
+  RESIGNATION
+  TERMINATION
+  RETIREMENT
+  CONTRACT_END
+  OTHER
+
+  @@map("separation_type")
+}
+
+enum AddressType {
+  CURRENT
+  PERMANENT
+
+  @@map("address_type")
+}
+
+enum FamilyRelation {
+  SPOUSE
+  CHILD
+  FATHER
+  MOTHER
+  SIBLING
+  OTHER
+
+  @@map("family_relation")
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+
+  @@map("skill_level")
+}
+
+enum BankAccountType {
+  SAVINGS
+  CURRENT
+
+  @@map("bank_account_type")
+}
+
+enum EmployeeDocumentCategory {
+  IDENTITY
+  ADDRESS_PROOF
+  EDUCATION
+  EMPLOYMENT
+  CONTRACT
+  LETTER
+  OTHER
+
+  @@map("employee_document_category")
+}
+
+/// Per-organization employee numbering (`<prefix><zero-padded number>`).
+model EmployeeSettings {
+  organizationId String   @id @map("organization_id") @db.Uuid
+  numberPrefix   String   @default("EMP-") @map("number_prefix") @db.VarChar(10)
+  numberPadding  Int      @default(4) @map("number_padding") @db.SmallInt
+  nextNumber     Int      @default(1) @map("next_number")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@map("employee_settings")
+}
+
+model Employee {
+  id               String          @id @default(uuid(7)) @db.Uuid
+  organizationId   String          @map("organization_id") @db.Uuid
+  employeeNumber   String          @map("employee_number") @db.VarChar(30)
+  /// Login account in this organization (self-service). Same tenant enforced by trigger.
+  membershipId     String?         @unique @map("membership_id") @db.Uuid
+  firstName        String          @map("first_name") @db.VarChar(100)
+  middleName       String?         @map("middle_name") @db.VarChar(100)
+  lastName         String?         @map("last_name") @db.VarChar(100)
+  preferredName    String?         @map("preferred_name") @db.VarChar(100)
+  workEmail        String?         @map("work_email") @db.Citext
+  workPhone        String?         @map("work_phone") @db.VarChar(25)
+  personalEmail    String?         @map("personal_email") @db.Citext
+  personalPhone    String?         @map("personal_phone") @db.VarChar(25)
+  dateOfBirth      DateTime?       @map("date_of_birth") @db.Date
+  gender           Gender?
+  maritalStatus    MaritalStatus?  @map("marital_status")
+  nationality      String?         @db.Char(2)
+  dateOfJoining    DateTime        @map("date_of_joining") @db.Date
+  probationStatus  ProbationStatus @default(NOT_APPLICABLE) @map("probation_status")
+  probationEndDate DateTime?       @map("probation_end_date") @db.Date
+  confirmationDate DateTime?       @map("confirmation_date") @db.Date
+  noticePeriodDays Int?            @map("notice_period_days") @db.SmallInt
+  status           EmployeeStatus  @default(ACTIVE)
+  resignationDate  DateTime?       @map("resignation_date") @db.Date
+  lastWorkingDate  DateTime?       @map("last_working_date") @db.Date
+  separationType   SeparationType? @map("separation_type")
+  separationReason String?         @map("separation_reason") @db.VarChar(1000)
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization      Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  membership        Membership?                @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  employmentRecords EmploymentRecord[]         @relation("EmployeeRecords")
+  managedRecords    EmploymentRecord[]         @relation("ManagerRecords")
+  statutoryIds      EmployeeStatutoryIds?
+  addresses         EmployeeAddress[]
+  emergencyContacts EmployeeEmergencyContact[]
+  familyMembers     EmployeeFamilyMember[]
+  education         EmployeeEducation[]
+  experience        EmployeeExperience[]
+  certifications    EmployeeCertification[]
+  skills            EmployeeSkill[]
+  bankAccounts      EmployeeBankAccount[]
+  documents         EmployeeDocument[]
+
+  @@unique([organizationId, employeeNumber])
+  @@unique([organizationId, id])
+  @@unique([organizationId, workEmail])
+  @@index([organizationId, status])
+  @@index([organizationId, lastName, firstName])
+  @@map("employees")
+}
+
+/// Effective-dated job assignment. Non-overlapping per employee (exclusion constraint).
+model EmploymentRecord {
+  id              String               @id @default(uuid(7)) @db.Uuid
+  organizationId  String               @map("organization_id") @db.Uuid
+  employeeId      String               @map("employee_id") @db.Uuid
+  effectiveFrom   DateTime             @map("effective_from") @db.Date
+  /// Inclusive end; NULL = open-ended (current or latest).
+  effectiveTo     DateTime?            @map("effective_to") @db.Date
+  changeType      EmploymentChangeType @map("change_type")
+  employmentType  EmploymentType       @map("employment_type")
+  companyId       String               @map("company_id") @db.Uuid
+  legalEntityId   String?              @map("legal_entity_id") @db.Uuid
+  branchId        String?              @map("branch_id") @db.Uuid
+  departmentId    String?              @map("department_id") @db.Uuid
+  teamId          String?              @map("team_id") @db.Uuid
+  designationId   String?              @map("designation_id") @db.Uuid
+  jobGradeId      String?              @map("job_grade_id") @db.Uuid
+  costCenterId    String?              @map("cost_center_id") @db.Uuid
+  managerId       String?              @map("manager_id") @db.Uuid
+  remarks         String?              @db.VarChar(500)
+  createdByUserId String?              @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  employee     Employee     @relation("EmployeeRecords", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+  company      Company      @relation(fields: [organizationId, companyId], references: [organizationId, id], onDelete: Restrict)
+  legalEntity  LegalEntity? @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  branch       Branch?      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  team         Team?        @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  designation  Designation? @relation(fields: [designationId], references: [id], onDelete: Restrict)
+  jobGrade     JobGrade?    @relation(fields: [jobGradeId], references: [id], onDelete: Restrict)
+  costCenter   CostCenter?  @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
+  manager      Employee?    @relation("ManagerRecords", fields: [managerId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, employeeId, effectiveFrom])
+  @@index([organizationId, companyId])
+  @@index([organizationId, departmentId])
+  @@index([organizationId, branchId])
+  @@index([organizationId, managerId])
+  @@map("employment_records")
+}
+
+/// Encrypted statutory identifiers (AES-256-GCM, context-bound). Never selected by default.
+model EmployeeStatutoryIds {
+  employeeId     String   @id @map("employee_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  panEncrypted   String?  @map("pan_encrypted")
+  panLast4       String?  @map("pan_last4") @db.Char(4)
+  uanEncrypted   String?  @map("uan_encrypted")
+  uanLast4       String?  @map("uan_last4") @db.Char(4)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, employeeId])
+  @@map("employee_statutory_ids")
+}
+
+model EmployeeAddress {
+  id             String      @id @default(uuid(7)) @db.Uuid
+  organizationId String      @map("organization_id") @db.Uuid
+  employeeId     String      @map("employee_id") @db.Uuid
+  type           AddressType
+  line1          String      @db.VarChar(200)
+  line2          String?     @db.VarChar(200)
+  city           String      @db.VarChar(100)
+  state          String?     @db.VarChar(100)
+  postalCode     String?     @map("postal_code") @db.VarChar(20)
+  countryCode    String      @default("IN") @map("country_code") @db.Char(2)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([employeeId, type])
+  @@index([organizationId, employeeId])
+  @@map("employee_addresses")
+}
+
+model EmployeeEmergencyContact {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  employeeId     String   @map("employee_id") @db.Uuid
+  name           String   @db.VarChar(200)
+  relationship   String   @db.VarChar(50)
+  phone          String   @db.VarChar(25)
+  email          String?  @db.Citext
+  isPrimary      Boolean  @default(false) @map("is_primary")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([organizationId, employeeId])
+  @@map("employee_emergency_contacts")
+}
+
+model EmployeeFamilyMember {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  employeeId     String         @map("employee_id") @db.Uuid
+  name           String         @db.VarChar(200)
+  relation       FamilyRelation
+  dateOfBirth    DateTime?      @map("date_of_birth") @db.Date
+  gender         Gender?
+  isDependent    Boolean        @default(false) @map("is_dependent")
+  phone          String?        @db.VarChar(25)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([organizationId, employeeId])
+  @@map("employee_family_members")
+}
+
+model EmployeeEducation {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  employeeId     String   @map("employee_id") @db.Uuid
+  qualification  String   @db.VarChar(200)
+  fieldOfStudy   String?  @map("field_of_study") @db.VarChar(200)
+  institution    String   @db.VarChar(200)
+  startYear      Int?     @map("start_year") @db.SmallInt
+  endYear        Int?     @map("end_year") @db.SmallInt
+  grade          String?  @db.VarChar(20)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([organizationId, employeeId])
+  @@map("employee_education")
+}
+
+model EmployeeExperience {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  employeeId     String   @map("employee_id") @db.Uuid
+  employer       String   @db.VarChar(200)
+  jobTitle       String   @map("job_title") @db.VarChar(200)
+  startDate      DateTime @map("start_date") @db.Date
+  endDate        DateTime @map("end_date") @db.Date
+  location       String?  @db.VarChar(200)
+  description    String?  @db.VarChar(2000)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([organizationId, employeeId])
+  @@map("employee_experience")
+}
+
+model EmployeeCertification {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  employeeId     String    @map("employee_id") @db.Uuid
+  name           String    @db.VarChar(200)
+  issuer         String?   @db.VarChar(200)
+  issuedOn       DateTime? @map("issued_on") @db.Date
+  expiresOn      DateTime? @map("expires_on") @db.Date
+  credentialId   String?   @map("credential_id") @db.VarChar(100)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([organizationId, employeeId])
+  @@map("employee_certifications")
+}
+
+model EmployeeSkill {
+  id             String     @id @default(uuid(7)) @db.Uuid
+  organizationId String     @map("organization_id") @db.Uuid
+  employeeId     String     @map("employee_id") @db.Uuid
+  name           String     @db.Citext
+  level          SkillLevel
+  years          Int?       @db.SmallInt
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([employeeId, name])
+  @@index([organizationId, name])
+  @@map("employee_skills")
+}
+
+model EmployeeBankAccount {
+  id                     String          @id @default(uuid(7)) @db.Uuid
+  organizationId         String          @map("organization_id") @db.Uuid
+  employeeId             String          @map("employee_id") @db.Uuid
+  accountHolderName      String          @map("account_holder_name") @db.VarChar(200)
+  bankName               String          @map("bank_name") @db.VarChar(200)
+  branchName             String?         @map("branch_name") @db.VarChar(200)
+  ifsc                   String          @db.Char(11)
+  accountType            BankAccountType @map("account_type")
+  accountNumberEncrypted String          @map("account_number_encrypted")
+  accountLast4           String          @map("account_last4") @db.VarChar(4)
+  isPrimary              Boolean         @default(false) @map("is_primary")
+  createdAt              DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([organizationId, employeeId])
+  @@map("employee_bank_accounts")
+}
+
+model EmployeeDocument {
+  id               String                   @id @default(uuid(7)) @db.Uuid
+  organizationId   String                   @map("organization_id") @db.Uuid
+  employeeId       String                   @map("employee_id") @db.Uuid
+  category         EmployeeDocumentCategory
+  title            String                   @db.VarChar(200)
+  fileName         String                   @map("file_name") @db.VarChar(255)
+  contentType      String                   @map("content_type") @db.VarChar(100)
+  sizeBytes        Int                      @map("size_bytes")
+  sha256           String                   @db.Char(64)
+  storageKey       String                   @unique @map("storage_key") @db.VarChar(500)
+  uploadedByUserId String?                  @map("uploaded_by_user_id") @db.Uuid
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, employeeId])
+  @@map("employee_documents")
 }

@@ -81,6 +81,9 @@ function uniqueFieldOf(err: unknown): string | undefined {
   const field = fields.find((f) => f !== 'organization_id' && f !== 'organizationId');
   if (!field) return undefined;
   // Constraint names look like `companies_organization_id_code_key`; map to a camelCase field.
+  // Other names (e.g. `employee_addresses_employee_id_type_key`) cannot be split reliably, so
+  // callers' `uniqueField` applies to them.
+  if (field.endsWith('_key') && !field.includes('organization_id_')) return undefined;
   const name = field.replace(/^.*organization_id_/, '').replace(/_key$/, '');
   return name.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
 }

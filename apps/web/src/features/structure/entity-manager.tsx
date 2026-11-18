@@ -1,40 +1,33 @@
 import type { Permission, RecordStatus } from '@hrm/shared-types';
 import {
-  Alert,
   Badge,
   Button,
   DataTable,
   type DataTableColumnDef,
   Dialog,
-  DialogBody,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  FormField,
-  FormGrid,
   Input,
   type PaginationState,
   Select,
   type SelectOption,
   type SortingState,
-  Textarea,
 } from '@hrm/ui-web';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { MoreHorizontal, Plus, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
 import type { z } from 'zod';
 import { usePermission } from '@/features/auth/auth-store';
 import { ConfirmDialog } from '@/features/members/member-dialogs';
 import { api, errorMessage } from '@/lib/api';
-import { applyServerErrors } from '@/lib/forms';
-import { type QueryParams, type RefSource, useEntityPage, useRefOptions } from './api';
-import { type FieldDef, type FormValues, toPayload } from './entity-payload';
+import { type RefSource, useEntityPage, useRefOptions } from './api';
+import type { FieldDef, FormValues } from './entity-payload';
+import { ResourceForm } from './resource-form';
 
 export type { FieldDef, FormValues } from './entity-payload';
 
@@ -79,51 +72,6 @@ export function StatusBadge({ status }: { status: RecordStatus }) {
   );
 }
 
-function RefSelect({
-  field,
-  value,
-  onChange,
-  values,
-  disabled,
-  ...aria
-}: {
-  field: FieldDef;
-  value: string;
-  onChange: (v: string) => void;
-  values: FormValues;
-  disabled?: boolean;
-  /** Wiring injected by FormField (label association, error description). */
-  id?: string;
-  'aria-invalid'?: boolean;
-  'aria-describedby'?: string;
-  'aria-required'?: boolean;
-}) {
-  const filterValue = field.refFilter ? values[field.refFilter.field] : undefined;
-  const params: QueryParams =
-    field.refFilter && filterValue ? { [field.refFilter.param]: filterValue } : {};
-  const waiting = Boolean(field.refFilter && !filterValue);
-  const options = useRefOptions(field.ref, params, !waiting);
-  const list = options.data ?? [];
-  return (
-    <Select
-      value={value}
-      disabled={disabled || waiting || options.isPending}
-      {...aria}
-      onChange={(e) => {
-        onChange(e.target.value);
-      }}
-      placeholder={
-        waiting
-          ? 'Select the parent first'
-          : options.isPending
-            ? 'Loading…'
-            : (field.placeholder ?? 'None')
-      }
-      options={field.required ? list : [{ value: '', label: '— None —' }, ...list]}
-    />
-  );
-}
-
 function EntityForm<T extends Base>({
   config,
   item,
@@ -133,126 +81,21 @@ function EntityForm<T extends Base>({
   item: T | null;
   onDone: () => void;
 }) {
-  const queryClient = useQueryClient();
   const editing = item !== null;
-  const [formError, setFormError] = useState<string | null>(null);
-  const form = useForm<FormValues>({
-    defaultValues: item ? config.toValues(item) : config.emptyValues,
-  });
-  const values = useWatch({ control: form.control }) as FormValues;
-  const fieldNames = config.fields.map((f) => f.name);
-
-  const save = useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      editing ? api.patch(`${config.path}/${item.id}`, body) : api.post(config.path, body),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['structure'] });
-      onDone();
-    },
-    onError: (err) => {
-      setFormError(applyServerErrors(err, form.setError, [...fieldNames, 'status']));
-    },
-  });
-
-  const submit = form.handleSubmit((raw) => {
-    setFormError(null);
-    const body = toPayload(config.fields, raw, editing);
-    const parsed = (editing ? config.updateSchema : config.createSchema).safeParse(body);
-    if (!parsed.success) {
-      let unmapped: string | null = null;
-      for (const issue of parsed.error.issues) {
-        const name = String(issue.path[0] ?? '');
-        if (fieldNames.includes(name))
-          form.setError(name, { type: 'validate', message: issue.message });
-        else unmapped ??= issue.message;
-      }
-      setFormError(unmapped);
-      return;
-    }
-    // Send what the user entered; the API applies the same schema (and its normalisation).
-    save.mutate(body);
-  });
-
-  const { errors } = form.formState;
-  const errorOf = (name: string) => {
-    const e = errors[name];
-    return typeof e?.message === 'string' ? e.message : undefined;
-  };
-
   return (
-    <form noValidate onSubmit={(e) => void submit(e)}>
-      <DialogBody className="flex flex-col gap-4">
-        {formError ? <Alert tone="destructive">{formError}</Alert> : null}
-        <FormGrid columns={2}>
-          {config.fields
-            .filter((f) => (f.show ? f.show(values) : true))
-            .map((f) => {
-              const locked = editing && f.createOnly;
-              const error = errorOf(f.name);
-              return (
-                <FormField
-                  key={f.name}
-                  label={f.label}
-                  error={error}
-                  description={f.description}
-                  required={f.required ?? false}
-                  className={f.wide || f.kind === 'textarea' ? 'sm:col-span-2' : undefined}
-                >
-                  {f.kind === 'ref' ? (
-                    <RefSelect
-                      field={f}
-                      value={values[f.name] ?? ''}
-                      onChange={(v) => {
-                        form.setValue(f.name, v, { shouldDirty: true });
-                        form.clearErrors(f.name);
-                        // A dependent reference becomes invalid when its parent changes.
-                        for (const dep of config.fields) {
-                          if (dep.refFilter?.field === f.name) form.setValue(dep.name, '');
-                        }
-                      }}
-                      values={values}
-                      disabled={locked ?? false}
-                    />
-                  ) : f.kind === 'select' ? (
-                    <Select
-                      {...form.register(f.name)}
-                      value={values[f.name] ?? ''}
-                      options={f.options ?? []}
-                      disabled={locked ?? false}
-                    />
-                  ) : f.kind === 'textarea' ? (
-                    <Textarea {...form.register(f.name)} placeholder={f.placeholder} />
-                  ) : (
-                    <Input
-                      {...form.register(f.name)}
-                      inputMode={f.kind === 'number' ? 'numeric' : undefined}
-                      placeholder={f.placeholder}
-                      disabled={locked ?? false}
-                    />
-                  )}
-                </FormField>
-              );
-            })}
-          {editing ? (
-            <FormField label="Status" error={errorOf('status')}>
-              <Select
-                {...form.register('status')}
-                value={values.status ?? ''}
-                options={STATUS_OPTIONS}
-              />
-            </FormField>
-          ) : null}
-        </FormGrid>
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="outline" onClick={onDone}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={save.isPending} aria-busy={save.isPending}>
-          {editing ? 'Save changes' : `Create ${config.singular}`}
-        </Button>
-      </DialogFooter>
-    </form>
+    <ResourceForm
+      fields={config.fields}
+      defaultValues={item ? config.toValues(item) : config.emptyValues}
+      schema={editing ? config.updateSchema : config.createSchema}
+      submit={(body) =>
+        item ? api.patch(`${config.path}/${item.id}`, body) : api.post(config.path, body)
+      }
+      invalidate={[['structure']]}
+      submitLabel={editing ? 'Save changes' : `Create ${config.singular}`}
+      onDone={onDone}
+      editing={editing}
+      {...(editing ? { statusOptions: STATUS_OPTIONS } : {})}
+    />
   );
 }
 

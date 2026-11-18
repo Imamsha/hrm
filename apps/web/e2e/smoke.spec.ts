@@ -12,7 +12,8 @@ async function registerViaUi(page: Page) {
   await page.getByLabel('Work email').fill(email);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Create organization' }).click();
-  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+  // Password hashing (argon2id) is deliberately slow; allow for a loaded CI machine.
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible({ timeout: 15_000 });
   return email;
 }
 
@@ -116,4 +117,48 @@ test('build structure through the UI and see it on the org chart', async ({ page
   const tree = page.getByRole('tree', { name: 'Acme India departments' });
   await expect(tree.getByText('Engineering')).toBeVisible();
   await expect(tree.getByText('Platform')).toBeVisible();
+});
+
+test('add an employee and maintain their profile', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Covered on desktop');
+  await registerViaUi(page);
+
+  await page.goto('/organization/structure?tab=companies');
+  await page.getByRole('button', { name: /New company/ }).click();
+  let dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Code/).fill('ACME');
+  await dialog.getByLabel(/^Name/).fill('Acme India');
+  await dialog.getByRole('button', { name: 'Create company' }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.goto('/people/employees');
+  await page.getByRole('button', { name: /Add employee/ }).click();
+  dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('Next number: EMP-0001')).toBeVisible();
+  await dialog.getByLabel(/^First name/).fill('Asha');
+  await dialog.getByLabel(/^Last name/).fill('Rao');
+  await dialog.getByLabel(/^Date of joining/).fill('2025-01-06');
+  await dialog.getByLabel(/^Company/).selectOption({ label: 'Acme India (ACME)' });
+  await dialog.getByLabel(/^Employment type/).selectOption('FULL_TIME');
+  await dialog.getByRole('button', { name: 'Add employee' }).click();
+
+  await expect(page.getByRole('heading', { name: /Asha Rao/ })).toBeVisible();
+  await expect(page.getByText('EMP-0001').first()).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Personal' }).click();
+  await page
+    .getByRole('heading', { name: 'Addresses' })
+    .locator('..')
+    .getByRole('button', { name: 'Add' })
+    .click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Type/).selectOption('CURRENT');
+  await dialog.getByLabel(/^Address line 1/).fill('1 MG Road');
+  await dialog.getByLabel(/^City/).fill('Bengaluru');
+  await dialog.getByRole('button', { name: 'Add' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('list', { name: 'Addresses' }).getByText('1 MG Road')).toBeVisible();
+
+  await page.goto('/people/employees');
+  await expect(page.getByRole('table', { name: 'Employees' }).getByText('Asha Rao')).toBeVisible();
 });

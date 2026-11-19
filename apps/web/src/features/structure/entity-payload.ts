@@ -6,7 +6,7 @@ export type FormValues = Record<string, string>;
 export interface FieldDef {
   name: string;
   label: string;
-  kind?: 'text' | 'textarea' | 'number' | 'select' | 'ref' | 'date' | 'email' | 'checkbox';
+  kind?: 'text' | 'textarea' | 'number' | 'select' | 'ref' | 'date' | 'time' | 'email' | 'checkbox';
   options?: SelectOption[];
   ref?: RefSource;
   /** Filters `ref` options by another field's current value, e.g. legal entities by company. */

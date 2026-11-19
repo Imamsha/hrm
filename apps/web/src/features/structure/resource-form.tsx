@@ -217,7 +217,15 @@ export function ResourceForm({
                 ) : (
                   <Input
                     {...form.register(f.name)}
-                    type={f.kind === 'date' ? 'date' : f.kind === 'email' ? 'email' : 'text'}
+                    type={
+                      f.kind === 'date'
+                        ? 'date'
+                        : f.kind === 'time'
+                          ? 'time'
+                          : f.kind === 'email'
+                            ? 'email'
+                            : 'text'
+                    }
                     inputMode={f.kind === 'number' ? 'numeric' : undefined}
                     placeholder={f.placeholder}
                     disabled={locked ?? false}

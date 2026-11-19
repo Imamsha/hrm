@@ -35,6 +35,30 @@ Integration tests use an isolated database (`hrm_test`), Redis DB 1 and bucket `
 (`TEST_*` variables in `.env.example`). The audit log is append-only, so tests create uniquely
 named tenants instead of cleaning up.
 
+## What is covered (Phase 05)
+
+- **Integration (9, `time.int.test.ts`, dates relative to today):** shift validation, one
+  default, night shifts, effective-dated assignments (later assignment → 409), roster day off;
+  idempotent device import with error rows; a full week evaluated (late + overtime, rostered
+  off, half day with early exit, holiday, missing punch); web punch toggle, duplicate 409,
+  disabled channel 403, location required 400, kiosk QR punch and tampered token 400;
+  regularization routing to the reporting manager (self-approval 403, duplicate pending 409,
+  future 400) and its effect on the day; manual punch audit; day summary scope; leave types,
+  yearly grant + carry-forward cap + lapse, monthly accrual, idempotent lazy ledger; preview,
+  apply, half-day-aware overlap, insufficient balance, leave-year span, approval by manager,
+  ON_LEAVE in attendance, cancel with reversal; minimum notice; HR adjustment and on-behalf
+  application; cross-tenant 404s; RLS without context; append-only punches and ledger.
+- **Unit:** time zones incl. DST, shift windows and validation, punch pairing, day evaluation
+  (present/late/overtime, half day, absent, pending, leave halves, holidays, regularization,
+  night shift, no shift), period totals; leave day counting (sandwich, halves), sessions, leave
+  years with any start month, monthly/yearly accrual with remainders and proration,
+  carry-forward; kiosk token windows and forgery.
+- **Web (4):** Time navigation by permission, clock-in request and month calendar with
+  regularization affordance, balances and live leave preview → apply payload, approvals inbox.
+  **Mobile (2):** clock in from the phone; location-required message.
+- **E2E:** link the owner as an employee, clock in from the web, create a leave type and see
+  the balance.
+
 ## What is covered (Phase 04)
 
 - **Employees (10 integration, `employees.int.test.ts`):** numbering from settings incl. skipping
@@ -142,6 +166,7 @@ named tenants instead of cleaning up.
   `docker restart hrm-redis-1` restores it.
 - **Vitest "Failed to start forks worker" / timeouts during `pnpm turbo run … test`:** the machine
   is short of memory. Re-run with `--concurrency=3`. jsdom suites allow 20 s per test.
+- **E2E on a slow machine:** run `pnpm --filter @hrm/web build`, start `pnpm --filter @hrm/web preview`, wait for http://localhost:4173, then `pnpm exec playwright test --workers=1` in `apps/web`.
 - **E2E "Unable to reach the server":** the Playwright web server runs `pnpm build`; on a
   memory-constrained machine the dev API (`node --watch`) can restart meanwhile. Build first,
   start `pnpm --filter @hrm/web preview`, then run `pnpm --filter @hrm/web test:e2e` (the

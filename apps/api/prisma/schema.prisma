@@ -78,6 +78,9 @@ model Organization {
   holidays         Holiday[]
 
   employeeSettings  EmployeeSettings?
+  timeSettings      TimeSettings?
+  shifts            Shift[]
+  leaveTypes        LeaveType[]
   employees         Employee[]
   employmentRecords EmploymentRecord[]
 
@@ -942,6 +945,13 @@ model Employee {
   skills            EmployeeSkill[]
   bankAccounts      EmployeeBankAccount[]
   documents         EmployeeDocument[]
+  shiftAssignments  ShiftAssignment[]
+  rosterEntries     RosterEntry[]
+  punches           AttendancePunch[]
+  regularizations   AttendanceRegularization[]
+  leaveRequests     LeaveRequest[]             @relation("LeaveRequests")
+  leaveApprovals    LeaveRequest[]             @relation("LeaveApprovals")
+  leaveLedger       LeaveLedgerEntry[]
 
   @@unique([organizationId, employeeNumber])
   @@unique([organizationId, id])
@@ -1181,4 +1191,284 @@ model EmployeeDocument {
 
   @@index([organizationId, employeeId])
   @@map("employee_documents")
+}
+
+// =============================================================================================
+// Phase 05 — shifts, attendance and leave
+// =============================================================================================
+
+enum PunchDirection {
+  IN
+  OUT
+
+  @@map("punch_direction")
+}
+
+enum PunchSource {
+  WEB
+  MOBILE
+  QR
+  BIOMETRIC_IMPORT
+  MANUAL
+
+  @@map("punch_source")
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+
+  @@map("request_status")
+}
+
+enum AccrualMethod {
+  NONE
+  YEARLY
+  MONTHLY
+
+  @@map("accrual_method")
+}
+
+enum LeaveSession {
+  FULL
+  FIRST_HALF
+  SECOND_HALF
+
+  @@map("leave_session")
+}
+
+enum LeaveLedgerEntryType {
+  OPENING
+  ACCRUAL
+  ADJUSTMENT
+  USAGE
+  REVERSAL
+  CARRY_FORWARD
+  LAPSE
+
+  @@map("leave_ledger_entry_type")
+}
+
+/// Per-organization time & attendance settings.
+model TimeSettings {
+  organizationId      String   @id @map("organization_id") @db.Uuid
+  leaveYearStartMonth Int      @default(1) @map("leave_year_start_month") @db.SmallInt
+  webPunchEnabled     Boolean  @default(true) @map("web_punch_enabled")
+  mobilePunchEnabled  Boolean  @default(true) @map("mobile_punch_enabled")
+  qrPunchEnabled      Boolean  @default(true) @map("qr_punch_enabled")
+  geolocationRequired Boolean  @default(false) @map("geolocation_required")
+  qrRotationSeconds   Int      @default(30) @map("qr_rotation_seconds") @db.SmallInt
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@map("time_settings")
+}
+
+model Shift {
+  id                   String       @id @default(uuid(7)) @db.Uuid
+  organizationId       String       @map("organization_id") @db.Uuid
+  code                 String       @db.VarChar(20)
+  name                 String       @db.VarChar(100)
+  /// Local minutes after midnight; end ≤ start crosses midnight.
+  startMinutes         Int          @map("start_minutes") @db.SmallInt
+  endMinutes           Int          @map("end_minutes") @db.SmallInt
+  breakMinutes         Int          @default(0) @map("break_minutes") @db.SmallInt
+  graceInMinutes       Int          @default(0) @map("grace_in_minutes") @db.SmallInt
+  graceOutMinutes      Int          @default(0) @map("grace_out_minutes") @db.SmallInt
+  fullDayMinutes       Int          @map("full_day_minutes") @db.SmallInt
+  halfDayMinutes       Int          @map("half_day_minutes") @db.SmallInt
+  overtimeAfterMinutes Int?         @map("overtime_after_minutes") @db.SmallInt
+  windowBeforeMinutes  Int          @default(240) @map("window_before_minutes") @db.SmallInt
+  windowAfterMinutes   Int          @default(360) @map("window_after_minutes") @db.SmallInt
+  isDefault            Boolean      @default(false) @map("is_default")
+  status               RecordStatus @default(ACTIVE)
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignments   ShiftAssignment[]
+  rosterEntries RosterEntry[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@map("shifts")
+}
+
+/// Effective-dated shift of an employee (non-overlapping per employee).
+model ShiftAssignment {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  employeeId     String    @map("employee_id") @db.Uuid
+  shiftId        String    @map("shift_id") @db.Uuid
+  effectiveFrom  DateTime  @map("effective_from") @db.Date
+  effectiveTo    DateTime? @map("effective_to") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+  shift    Shift    @relation(fields: [organizationId, shiftId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, employeeId, effectiveFrom])
+  @@index([organizationId, shiftId])
+  @@map("shift_assignments")
+}
+
+/// Day-specific override: a shift, or a day off when `shift_id` is NULL.
+model RosterEntry {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  employeeId     String   @map("employee_id") @db.Uuid
+  date           DateTime @db.Date
+  shiftId        String?  @map("shift_id") @db.Uuid
+  note           String?  @db.VarChar(200)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+  shift    Shift?   @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+
+  @@unique([employeeId, date])
+  @@index([organizationId, date])
+  @@map("roster_entries")
+}
+
+/// Raw clock events (append-only).
+model AttendancePunch {
+  id               String         @id @default(uuid(7)) @db.Uuid
+  organizationId   String         @map("organization_id") @db.Uuid
+  employeeId       String         @map("employee_id") @db.Uuid
+  punchedAt        DateTime       @map("punched_at") @db.Timestamptz(6)
+  direction        PunchDirection
+  source           PunchSource
+  latitude         Decimal?       @db.Decimal(9, 6)
+  longitude        Decimal?       @db.Decimal(9, 6)
+  ipAddress        String?        @map("ip_address") @db.Inet
+  deviceLabel      String?        @map("device_label") @db.VarChar(100)
+  branchId         String?        @map("branch_id") @db.Uuid
+  note             String?        @db.VarChar(500)
+  recordedByUserId String?        @map("recorded_by_user_id") @db.Uuid
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([employeeId, punchedAt, direction])
+  @@index([organizationId, employeeId, punchedAt])
+  @@index([organizationId, punchedAt])
+  @@map("attendance_punches")
+}
+
+model AttendanceRegularization {
+  id                String        @id @default(uuid(7)) @db.Uuid
+  organizationId    String        @map("organization_id") @db.Uuid
+  employeeId        String        @map("employee_id") @db.Uuid
+  date              DateTime      @db.Date
+  requestedIn       DateTime      @map("requested_in") @db.Timestamptz(6)
+  requestedOut      DateTime      @map("requested_out") @db.Timestamptz(6)
+  reason            String        @db.VarChar(500)
+  status            RequestStatus @default(PENDING)
+  requestedByUserId String?       @map("requested_by_user_id") @db.Uuid
+  decidedByUserId   String?       @map("decided_by_user_id") @db.Uuid
+  decidedAt         DateTime?     @map("decided_at") @db.Timestamptz(6)
+  decisionNote      String?       @map("decision_note") @db.VarChar(500)
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, employeeId, date])
+  @@index([organizationId, status])
+  @@map("attendance_regularizations")
+}
+
+model LeaveType {
+  id                   String           @id @default(uuid(7)) @db.Uuid
+  organizationId       String           @map("organization_id") @db.Uuid
+  code                 String           @db.VarChar(20)
+  name                 String           @db.VarChar(100)
+  description          String?          @db.VarChar(500)
+  isPaid               Boolean          @default(true) @map("is_paid")
+  tracksBalance        Boolean          @default(true) @map("tracks_balance")
+  accrualMethod        AccrualMethod    @default(YEARLY) @map("accrual_method")
+  annualQuota          Decimal          @default(0) @map("annual_quota") @db.Decimal(6, 2)
+  prorateOnJoining     Boolean          @default(false) @map("prorate_on_joining")
+  carryForwardMax      Decimal?         @map("carry_forward_max") @db.Decimal(6, 2)
+  allowNegativeBalance Boolean          @default(false) @map("allow_negative_balance")
+  allowHalfDay         Boolean          @default(true) @map("allow_half_day")
+  countWeeklyOffs      Boolean          @default(false) @map("count_weekly_offs")
+  countHolidays        Boolean          @default(false) @map("count_holidays")
+  minNoticeDays        Int              @default(0) @map("min_notice_days") @db.SmallInt
+  maxConsecutiveDays   Decimal?         @map("max_consecutive_days") @db.Decimal(6, 2)
+  allowDuringProbation Boolean          @default(true) @map("allow_during_probation")
+  employmentTypes      EmploymentType[] @default([]) @map("employment_types")
+  status               RecordStatus     @default(ACTIVE)
+  createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  requests      LeaveRequest[]
+  ledgerEntries LeaveLedgerEntry[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@map("leave_types")
+}
+
+model LeaveRequest {
+  id                 String        @id @default(uuid(7)) @db.Uuid
+  organizationId     String        @map("organization_id") @db.Uuid
+  employeeId         String        @map("employee_id") @db.Uuid
+  leaveTypeId        String        @map("leave_type_id") @db.Uuid
+  startDate          DateTime      @map("start_date") @db.Date
+  endDate            DateTime      @map("end_date") @db.Date
+  startSession       LeaveSession  @default(FULL) @map("start_session")
+  endSession         LeaveSession  @default(FULL) @map("end_session")
+  days               Decimal       @db.Decimal(6, 2)
+  reason             String?       @db.VarChar(1000)
+  status             RequestStatus @default(PENDING)
+  /// Reporting manager at the time of the request (routing), if any.
+  approverEmployeeId String?       @map("approver_employee_id") @db.Uuid
+  requestedByUserId  String?       @map("requested_by_user_id") @db.Uuid
+  decidedByUserId    String?       @map("decided_by_user_id") @db.Uuid
+  decidedAt          DateTime?     @map("decided_at") @db.Timestamptz(6)
+  decisionNote       String?       @map("decision_note") @db.VarChar(500)
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee  Employee           @relation("LeaveRequests", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+  leaveType LeaveType          @relation(fields: [organizationId, leaveTypeId], references: [organizationId, id], onDelete: Restrict)
+  approver  Employee?          @relation("LeaveApprovals", fields: [approverEmployeeId], references: [id], onDelete: SetNull)
+  ledger    LeaveLedgerEntry[]
+
+  @@index([organizationId, employeeId, startDate])
+  @@index([organizationId, status])
+  @@index([organizationId, approverEmployeeId, status])
+  @@map("leave_requests")
+}
+
+/// Leave balance ledger (append-only): balance = sum of `days` per employee/type/year.
+model LeaveLedgerEntry {
+  id              String               @id @default(uuid(7)) @db.Uuid
+  organizationId  String               @map("organization_id") @db.Uuid
+  employeeId      String               @map("employee_id") @db.Uuid
+  leaveTypeId     String               @map("leave_type_id") @db.Uuid
+  year            Int                  @db.SmallInt
+  entryType       LeaveLedgerEntryType @map("entry_type")
+  /// Accrual period (1–12; 0 = yearly grant); 0 for other entry types.
+  period          Int                  @default(0) @db.SmallInt
+  days            Decimal              @db.Decimal(6, 2)
+  effectiveDate   DateTime             @map("effective_date") @db.Date
+  leaveRequestId  String?              @map("leave_request_id") @db.Uuid
+  note            String?              @db.VarChar(500)
+  createdByUserId String?              @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  employee     Employee      @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+  leaveType    LeaveType     @relation(fields: [organizationId, leaveTypeId], references: [organizationId, id], onDelete: Restrict)
+  leaveRequest LeaveRequest? @relation(fields: [leaveRequestId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, employeeId, leaveTypeId, year])
+  @@map("leave_ledger_entries")
 }

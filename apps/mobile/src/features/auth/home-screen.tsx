@@ -34,6 +34,14 @@ export function HomeScreen() {
         <Text>{session.user.email}</Text>
         <Text muted>Two-factor authentication: {session.user.mfaEnabled ? 'on' : 'off'}</Text>
       </Card>
+      {session.permissions.includes('attendance.self.use') ? (
+        <Button
+          label="Attendance"
+          onPress={() => {
+            router.push('/attendance');
+          }}
+        />
+      ) : null}
       {session.permissions.includes('employees.self.access') ? (
         <Button
           label="My profile"

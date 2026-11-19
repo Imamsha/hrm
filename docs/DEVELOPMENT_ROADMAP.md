@@ -8,8 +8,8 @@ approval before the next phase starts.
 | 01    | Foundation & architecture: monorepo, web/mobile/API setup, shared packages, PostgreSQL, Prisma, Redis, BullMQ, Docker, logging, health, Swagger, testing foundation, design system, docs                                                                  | ✅ Done — approved 2026-11-16, CI green                     |
 | 02    | Auth, RBAC & SaaS: registration, login/logout, refresh rotation, password recovery, MFA foundation, users, organizations, memberships, roles, permissions, tenant context from auth, full RLS + ABAC enforcement, subscription foundation, security audit | ✅ Done — approved, CI green                                |
 | 03    | Organization management: companies, legal entities, branches, departments, teams, designations, job grades, locations, org chart, settings, working days, holiday calendars                                                                               | ✅ Done — approved 2026-11-18, CI green                     |
-| 04    | Employee management: directory, profile, personal/employment info, documents, skills, education, experience, history, transfer, promotion, probation, confirmation, lifecycle                                                                             | 🟡 Implemented & verified locally — awaiting owner approval |
-| 05    | Attendance, shifts & leave: clock-in/out, biometric, QR, shifts, rostering, overtime, leave policies/applications/balances, approvals, attendance analytics                                                                                               | ⏳                                                          |
+| 04    | Employee management: directory, profile, personal/employment info, documents, skills, education, experience, history, transfer, promotion, probation, confirmation, lifecycle                                                                             | ✅ Done — approved 2026-11-19, CI green                     |
+| 05    | Attendance, shifts & leave: clock-in/out, biometric, QR, shifts, rostering, overtime, leave policies/applications/balances, approvals, attendance analytics                                                                                               | 🟡 Implemented & verified locally — awaiting owner approval |
 | 06    | Recruitment & onboarding: requisitions, openings, career portal, candidates, resume parsing, interviews, assessments, offers, onboarding, joining docs, induction                                                                                         | ⏳                                                          |
 | 07    | India payroll: structures, earnings, deductions, EPF, ESI, PT, TDS, regimes, runs, payslips, arrears, approvals, bank files, F&F                                                                                                                          | ⏳                                                          |
 | 08    | Expenses, assets & travel: claims, reimbursements, OCR, asset allocation/return, travel requests/approvals/settlements                                                                                                                                    | ⏳                                                          |
@@ -49,3 +49,12 @@ approval before the next phase starts.
   collected (ADR-011).
 - Bulk employee import (CSV) and directory export — with the DataTable export work.
 - Mobile: read-only "My profile" only; editing and documents on mobile — Phase 13.
+
+## Carried forward from Phase 05
+
+- Overtime approval and compensatory off; leave encashment and final settlement — Phase 07.
+- Multi-level approval chains, delegation, escalation — Phase 10 (workflow engine).
+- Biometric device push integrations, branch geofencing — Phase 14; mobile location capture
+  and QR scanning in the app — Phase 13.
+- Roster planning UI (the API supports day overrides), attendance analytics dashboards — Phase 12.
+- Leave types: UI for employment-type applicability (API supports it).

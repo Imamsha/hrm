@@ -162,3 +162,53 @@ test('add an employee and maintain their profile', async ({ page, isMobile }) =>
   await page.goto('/people/employees');
   await expect(page.getByRole('table', { name: 'Employees' }).getByText('Asha Rao')).toBeVisible();
 });
+
+test('clock in and see a leave balance as a linked employee', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Covered on desktop');
+  await registerViaUi(page);
+
+  await page.goto('/organization/structure?tab=companies');
+  await page.getByRole('button', { name: /New company/ }).click();
+  let dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Code/).fill('ACME');
+  await dialog.getByLabel(/^Name/).fill('Acme India');
+  await dialog.getByRole('button', { name: 'Create company' }).click();
+  await expect(dialog).toBeHidden();
+
+  // The owner becomes an employee linked to their own login.
+  await page.goto('/people/employees');
+  await page.getByRole('button', { name: /Add employee/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^First name/).fill('Esha');
+  await dialog.getByLabel(/^Date of joining/).fill('2025-01-06');
+  await dialog.getByLabel(/^Company/).selectOption({ label: 'Acme India (ACME)' });
+  await dialog.getByLabel(/^Employment type/).selectOption('FULL_TIME');
+  await dialog.getByRole('button', { name: 'Add employee' }).click();
+  await expect(page.getByRole('heading', { name: /Esha/ })).toBeVisible();
+  await page.getByRole('button', { name: /Actions/ }).click();
+  await page.getByRole('menuitem', { name: 'Link login account' }).click();
+  dialog = page.getByRole('dialog');
+  // Options: placeholder, “Not linked”, then the only member (the signed-in owner).
+  await dialog.getByLabel('Member').selectOption({ index: 2 });
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.goto('/me/attendance');
+  await page.getByRole('button', { name: /Clock in/ }).click();
+  await expect(page.getByRole('button', { name: /Clock out/ })).toBeVisible();
+  await expect(page.getByRole('list', { name: "Today's punches" }).getByText(/^IN /)).toBeVisible();
+
+  await page.goto('/time/policies');
+  await page.getByRole('button', { name: /New leave type/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Code/).fill('CL');
+  await dialog.getByLabel(/^Name/).fill('Casual leave');
+  await dialog.getByLabel(/^Days per leave year/).fill('12');
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.goto('/me/leave');
+  const balances = page.getByRole('list', { name: 'Leave balances' });
+  await expect(balances.getByText('Casual leave')).toBeVisible();
+  await expect(balances.getByText('12.00')).toBeVisible();
+});

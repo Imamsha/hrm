@@ -21,6 +21,7 @@ import { HealthModule } from './modules/health/health.module.js';
 import { IdentityModule } from './modules/identity.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { StructureModule } from './modules/structure/structure.module.js';
+import { TimeModule } from './modules/time/time.module.js';
 
 /** True unless the handler or controller is marked @AuthRateLimited(). */
 function notAuthRateLimited(context: ExecutionContext): boolean {
@@ -68,6 +69,7 @@ export class AppModule {
         IdentityModule,
         StructureModule,
         EmployeesModule,
+        TimeModule,
       ],
       providers: [
         // Order matters: rate limiting runs before authentication work.

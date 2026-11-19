@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Phase 04 — Employee management** (2026-11-18). Decisions are recorded as ADRs in
+Status: **Phase 05 — Shifts, attendance & leave** (2026-11-19). Decisions are recorded as ADRs in
 [`docs/architecture/`](architecture/).
 
 ## 1. System overview
@@ -187,7 +187,24 @@ See ADR-010.
 
 See ADR-011.
 
-## 14. ADR index
+## 14. Shifts, attendance and leave (Phase 05)
+
+- **Module:** `modules/time` — `ShiftsService` (shifts, assignments, roster), `AttendanceService`
+  (clocking, QR kiosk, device import, manual punches, ranges, summary, regularization),
+  `LeaveService` (types, ledger-backed balances, preview/apply/decide/cancel, adjustments),
+  `TimeSettingsService`; shared `time-context` loads calendars, shifts, leave and punches in
+  batch and evaluates days with `@hrm/business-rules` (`evaluateDay`, `countLeaveDays`,
+  `accrualCredits`, `carryForward`, time-zone helpers).
+- **Computed, not stored:** attendance days are evaluated from raw (append-only) punches on read;
+  the leave balance is an append-only ledger whose accruals and rollovers are written lazily and
+  idempotently.
+- **Web:** Time section — My attendance (clock, month calendar, regularization), QR clock-in and
+  kiosk, My leave (balances, live preview), Approvals, Team attendance, Leave requests, Shifts,
+  Leave & attendance policies. **Mobile:** Attendance screen (clock in/out).
+
+See ADR-012.
+
+## 15. ADR index
 
 | ADR                                                                     | Title                                                            |
 | ----------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -202,3 +219,4 @@ See ADR-011.
 | [009](architecture/ADR-009-authorization-rbac-abac.md)                  | Authorization (RBAC + ABAC) and tenant resolution                |
 | [010](architecture/ADR-010-organization-structure-and-scoped-access.md) | Organization structure, calendars and structural ABAC scopes     |
 | [011](architecture/ADR-011-employee-management.md)                      | Employee records, effective-dated job history and sensitive data |
+| [012](architecture/ADR-012-time-attendance-leave.md)                    | Shifts, attendance and leave                                     |

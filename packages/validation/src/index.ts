@@ -5,3 +5,4 @@ export * from './health.js';
 export * from './issues.js';
 export * from './employees.js';
 export * from './structure.js';
+export * from './time.js';

@@ -27,6 +27,19 @@ other tenants → 404/400).
 | `employees.document.manage`       | Upload, rename, delete employee documents (Phase 04)                                                               |
 | `employees.settings.manage`       | Employee numbering (organization-wide only) (Phase 04)                                                             |
 | `employees.self.access`           | Self-service: own profile under `/me/employee` (Phase 04)                                                          |
+| `shifts.shift.read`               | View shifts, assignments and rosters (scoped) (Phase 05)                                                           |
+| `shifts.shift.manage`             | Manage shifts (definitions: organization-wide), assignments and rosters (scoped) (Phase 05)                        |
+| `attendance.self.use`             | Clock in/out, own attendance, request regularizations (Phase 05)                                                   |
+| `attendance.record.read`          | Attendance of employees in scope (summary, register, punches) (Phase 05)                                           |
+| `attendance.record.manage`        | Manual punches and regularization decisions in scope (Phase 05)                                                    |
+| `attendance.punch.import`         | Import device punches (organization-wide) (Phase 05)                                                               |
+| `attendance.kiosk.operate`        | Run the QR kiosk for a branch (scoped by company/branch) (Phase 05)                                                |
+| `attendance.settings.manage`      | Clock-in channels, location requirement, QR rotation, leave year (Phase 05)                                        |
+| `leave.self.use`                  | Apply for leave, own balances, approvals inbox (Phase 05)                                                          |
+| `leave.type.manage`               | Leave types and policies (Phase 05)                                                                                |
+| `leave.request.read`              | Leave of employees in scope (Phase 05)                                                                             |
+| `leave.request.approve`           | Approve/reject and apply on behalf in scope (Phase 05)                                                             |
+| `leave.balance.adjust`            | Opening balances and adjustments in scope (Phase 05)                                                               |
 | `users.member.read`               | View members (and pending invitations)                                                                             |
 | `users.member.invite`             | Invite people, revoke invitations                                                                                  |
 | `users.member.update`             | Suspend/reactivate members, change role assignments                                                                |
@@ -59,6 +72,19 @@ other tenants → 404/400).
 | employees.document.manage       |   ✓   |   ✓   |    ✓     |         |         |          |
 | employees.settings.manage       |   ✓   |   ✓   |    ✓     |         |         |          |
 | employees.self.access           |   ✓   |   ✓   |    ✓     |    ✓    |    ✓    |    ✓     |
+| shifts.shift.read               |   ✓   |   ✓   |    ✓     |    ✓    |    ✓    |          |
+| shifts.shift.manage             |   ✓   |   ✓   |    ✓     |         |         |          |
+| attendance.self.use             |   ✓   |   ✓   |    ✓     |    ✓    |    ✓    |    ✓     |
+| attendance.record.read          |   ✓   |   ✓   |    ✓     |    ✓    |    ✓    |          |
+| attendance.record.manage        |   ✓   |   ✓   |    ✓     |         |         |          |
+| attendance.punch.import         |   ✓   |   ✓   |    ✓     |         |         |          |
+| attendance.kiosk.operate        |   ✓   |   ✓   |    ✓     |         |         |          |
+| attendance.settings.manage      |   ✓   |   ✓   |    ✓     |         |         |          |
+| leave.self.use                  |   ✓   |   ✓   |    ✓     |    ✓    |    ✓    |    ✓     |
+| leave.type.manage               |   ✓   |   ✓   |    ✓     |         |         |          |
+| leave.request.read              |   ✓   |   ✓   |    ✓     |    ✓    |    ✓    |          |
+| leave.request.approve           |   ✓   |   ✓   |    ✓     |         |         |          |
+| leave.balance.adjust            |   ✓   |   ✓   |    ✓     |         |         |          |
 | users.member.read               |   ✓   |   ✓   |    ✓     |         |    ✓    |          |
 | users.member.invite             |   ✓   |   ✓   |    ✓     |         |         |          |
 | users.member.update             |   ✓   |   ✓   |    ✓     |         |         |          |
@@ -105,6 +131,23 @@ system roles match `SYSTEM_ROLES` exactly.
 | `POST/PATCH/DELETE …/documents`                                                                                                                                       | employees.document.manage (scoped)                                                                                                                  |
 | `GET /employees/settings` / `PUT /employees/settings`                                                                                                                 | employees.employee.create (any scope) / employees.settings.manage (organization-wide)                                                               |
 | `/me/employee/**`                                                                                                                                                     | employees.self.access (organization-wide) and a linked employee record; own record only                                                             |
+| `/me/attendance/**` (today, punches, range, regularizations)                                                                                                          | attendance.self.use; own record only                                                                                                                |
+| `GET /attendance/summary`, `GET /employees/:id/attendance/days`, `…/attendance/punches`, `GET /attendance/regularizations`                                            | attendance.record.read at any scope (filtered)                                                                                                      |
+| `POST /employees/:id/attendance/punches`                                                                                                                              | attendance.record.manage (scoped; never for yourself)                                                                                               |
+| `POST /attendance/regularizations/:id/decision`                                                                                                                       | reporting manager, or attendance.record.manage in scope (never your own)                                                                            |
+| `POST /attendance/punches/import`                                                                                                                                     | attendance.punch.import (organization-wide)                                                                                                         |
+| `GET /attendance/kiosk/:branchId/token`                                                                                                                               | attendance.kiosk.operate covering the branch                                                                                                        |
+| `GET/PUT /attendance/settings`                                                                                                                                        | attendance.self.use / attendance.settings.manage                                                                                                    |
+| `GET /shifts`, `/shift-assignments`, `/roster`                                                                                                                        | shifts.shift.read (scoped lists)                                                                                                                    |
+| `POST/PATCH/DELETE /shifts`                                                                                                                                           | shifts.shift.manage (organization-wide)                                                                                                             |
+| `POST/DELETE /shift-assignments`, `PUT/DELETE /roster`                                                                                                                | shifts.shift.manage for each employee (scoped)                                                                                                      |
+| `GET /leave/types` / `POST/PATCH /leave/types`                                                                                                                        | leave.self.use / leave.type.manage                                                                                                                  |
+| `/me/leave/**`, `GET /me/approvals`                                                                                                                                   | leave.self.use; own record / items you may decide                                                                                                   |
+| `GET /leave/requests`, `GET /employees/:id/leave/balances                                                                                                             | ledger`                                                                                                                                             | leave.request.read (scoped)                      |
+| `POST /leave/requests/:id/decision`                                                                                                                                   | reporting manager, or leave.request.approve in scope (never your own)                                                                               |
+| `POST /leave/requests/:id/cancel`                                                                                                                                     | the employee (pending, or approved and not started) or an approver                                                                                  |
+| `POST /employees/:id/leave/preview                                                                                                                                    | requests`                                                                                                                                           | leave.request.approve (scoped) — apply on behalf |
+| `POST /employees/:id/leave/adjustments`                                                                                                                               | leave.balance.adjust (scoped; never your own balance)                                                                                               |
 | `GET /members/:id/role-assignments`                                                                                                                                   | users.member.read                                                                                                                                   |
 | `POST /members/:id/role-assignments`, `DELETE /members/:id/role-assignments/:assignmentId`                                                                            | users.member.update (+ owner rules; owner role organization-wide only)                                                                              |
 | `GET` companies, legal-entities, locations, branches, cost-centers, departments, teams (list + `:id`), `GET /org-chart`                                               | organization.structure.read                                                                                                                         |

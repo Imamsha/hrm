@@ -151,6 +151,23 @@ foreign keys to `employees` (CASCADE for profile collections, RESTRICT for docum
 
 Extension: `btree_gist` (trusted; created by the migration) for the exclusion constraint.
 
+## Tables (Phase 05 — shifts, attendance and leave)
+
+All tenant-owned with RLS `<table>_tenant_isolation`; employee references are composite
+`(organization_id, employee_id)` foreign keys.
+
+| Table                        | Key columns / constraints                                                                                                                                                                                                                                                                                                                                               |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `time_settings`              | PK `organization_id`; leave-year start month 1–12; web/mobile/QR clock-in switches; location requirement; QR rotation 15–300 s                                                                                                                                                                                                                                          |
+| `shifts`                     | code (CHECK) UNIQUE per org; local `start_minutes`/`end_minutes` 0–1439 (end ≤ start crosses midnight, start ≠ end); break, grace in/out, full/half-day minutes (half ≤ full), optional overtime threshold, punch window before/after (0–720); partial unique **one default per organization**                                                                          |
+| `shift_assignments`          | employee + shift (composite FKs), `effective_from`/`effective_to`; **EXCLUDE USING gist** no overlaps per employee                                                                                                                                                                                                                                                      |
+| `roster_entries`             | `UNIQUE(employee_id, date)`; `shift_id` NULL = day off; same-tenant trigger                                                                                                                                                                                                                                                                                             |
+| `attendance_punches`         | `punched_at` timestamptz, direction IN/OUT, source WEB/MOBILE/QR/BIOMETRIC_IMPORT/MANUAL, optional `latitude`/`longitude` numeric(9,6) (both or neither), IP, device label, branch (QR); `UNIQUE(employee_id, punched_at, direction)` (idempotent imports); manual punches need a note; **append-only** (trigger + UPDATE/DELETE revoked)                               |
+| `attendance_regularizations` | requested in/out (out > in, ≤ 24 h), reason, status PENDING/APPROVED/REJECTED/CANCELLED, decision fields (decided ⇒ timestamp); partial unique **one pending per employee and day**; no DELETE                                                                                                                                                                          |
+| `leave_types`                | code UNIQUE per org; paid / tracks balance; accrual NONE/YEARLY/MONTHLY; `annual_quota` numeric(6,2) ≥ 0; prorate; `carry_forward_max`; negative balance; half days; count weekly offs / holidays; min notice 0–365; max consecutive; probation; `employment_types` enum[]                                                                                              |
+| `leave_requests`             | type + employee (composite FKs), dates (end ≥ start), sessions FULL/FIRST_HALF/SECOND_HALF, `days` numeric(6,2) in half-day steps (CHECK), routing `approver_employee_id` (same-tenant trigger), status + decision fields; no DELETE                                                                                                                                    |
+| `leave_ledger_entries`       | employee, type, leave `year`, entry type OPENING/ACCRUAL/ADJUSTMENT/USAGE/REVERSAL/CARRY_FORWARD/LAPSE, signed `days` numeric(6,2) (sign CHECK per type), accrual `period`, `leave_request_id` (required exactly for usage/reversal); partial unique: one accrual per period, one carry-forward and one lapse per year, one usage/reversal per request; **append-only** |
+
 ## Migrations
 
 | Migration                                           | Contents                                                                                                                                                                                                                     |
@@ -159,10 +176,11 @@ Extension: `btree_gist` (trusted; created by the migration) for the exclusion co
 | `20261116000100_organizations_and_audit`            | enums, `organizations`, `audit_logs`, indexes, FK, CHECKs, triggers, RLS policies, privilege revocations                                                                                                                     |
 | `20261116010000_identity_access_subscriptions`      | Phase 02 tables above, CHECKs, NULL-safe/partial unique indexes, triggers, RLS, `SECURITY DEFINER` invitation lookup, grants (INSERT on organizations under RLS), catalog seeds                                              |
 | `20261116020000_user_scope_policies_without_tenant` | user-scoped read policies apply only without a tenant context (fix found by integration tests)                                                                                                                               |
+| `20261119000000_time_attendance_leave`              | Phase 05 tables above, exclusion constraint on shift assignments, append-only punches and ledger, idempotency indexes, CHECKs, triggers, RLS on 9 tables, 13 permissions granted to existing system roles                    |
 | `20261118000000_employee_management`                | Phase 04 tables and enums above, btree_gist exclusion, append-only history, CHECKs, partial unique indexes, triggers, RLS on 13 tables, DELETE revoked on employees/history, 11 permissions granted to existing system roles |
 | `20261117000000_organization_structure`             | Phase 03 tables and enums above, CHECKs, partial unique indexes, integrity triggers, RLS on all 13 tables, 6 permissions seeded and granted to existing system roles                                                         |
 
-Status (2026-11-18): all six migrations applied to `hrm` and `hrm_test` (PostgreSQL 17.12,
+Status (2026-11-19): all seven migrations applied to `hrm` and `hrm_test` (PostgreSQL 17.12,
 pgvector 0.8.7); `prisma migrate diff --from-config-datasource --to-schema --exit-code` reports
 **no drift**. The integration-test global setup and CI repeat both checks.
 

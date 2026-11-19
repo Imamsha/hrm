@@ -16,6 +16,15 @@ import { CalendarsPage } from '@/features/structure/calendars-page';
 import { OrgChartPage } from '@/features/structure/org-chart-page';
 import { JobCatalogPage, StructurePage } from '@/features/structure/structure-pages';
 import { SystemStatusPage } from '@/features/system/system-status-page';
+import { KioskPage, QrClockInPage } from '@/features/time/kiosk-pages';
+import {
+  ApprovalsPage,
+  LeavePoliciesPage,
+  LeaveRequestsPage,
+  MyLeavePage,
+} from '@/features/time/leave-pages';
+import { MyAttendancePage } from '@/features/time/my-attendance-page';
+import { ShiftsPage, TeamAttendancePage } from '@/features/time/team-pages';
 import { NotFoundPage, RouteErrorPage } from './error-pages';
 import { GuestOnly, RequireAuth, RequirePermission } from './guards';
 import { AppShell } from './layout/app-shell';
@@ -76,6 +85,87 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
                     <MyProfilePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/attendance',
+                handle: crumb('My attendance'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.ATTENDANCE_SELF_USE}>
+                    <MyAttendancePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'attendance/qr',
+                handle: crumb('QR clock-in'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.ATTENDANCE_SELF_USE}>
+                    <QrClockInPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/leave',
+                handle: crumb('My leave'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.LEAVE_SELF_USE}>
+                    <MyLeavePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/approvals',
+                handle: crumb('Approvals'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.LEAVE_SELF_USE}>
+                    <ApprovalsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'time/attendance',
+                handle: crumb('Team attendance'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.ATTENDANCE_RECORD_READ}>
+                    <TeamAttendancePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'time/leave',
+                handle: crumb('Leave requests'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.LEAVE_REQUEST_READ}>
+                    <LeaveRequestsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'time/shifts',
+                handle: crumb('Shifts'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.SHIFTS_SHIFT_READ}>
+                    <ShiftsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'time/policies',
+                handle: crumb('Leave & attendance policies'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.LEAVE_TYPE_MANAGE}>
+                    <LeavePoliciesPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'time/kiosk',
+                handle: crumb('Kiosk'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.ATTENDANCE_KIOSK_OPERATE}>
+                    <KioskPage />
                   </RequirePermission>
                 ),
               },

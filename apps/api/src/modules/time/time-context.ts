@@ -301,6 +301,8 @@ export async function employeeShifts(
 export interface DayLeave {
   type: string;
   session: LeaveSession;
+  /** Portion of the day on unpaid leave (0, 0.5 or 1). */
+  unpaidDays: number;
 }
 
 /** Approved leave per employee and date (half sessions on the first/last day). */
@@ -323,7 +325,7 @@ export async function approvedLeave(
       endDate: true,
       startSession: true,
       endSession: true,
-      leaveType: { select: { name: true } },
+      leaveType: { select: { name: true, isPaid: true } },
     },
   });
   const out = new Map<string, DayLeave>();
@@ -338,12 +340,17 @@ export async function approvedLeave(
         session = start === end ? r.startSession : 'FIRST_HALF';
       const key = `${r.employeeId}|${d}`;
       const existing = out.get(key);
+      const unpaid = r.leaveType.isPaid ? 0 : session === 'FULL' ? 1 : 0.5;
       // Two half-day leaves on one day make a full day.
       out.set(
         key,
         existing && existing.session !== session
-          ? { type: existing.type, session: 'FULL' }
-          : { type: r.leaveType.name, session },
+          ? {
+              type: existing.type,
+              session: 'FULL',
+              unpaidDays: Math.min(1, existing.unpaidDays + unpaid),
+            }
+          : { type: r.leaveType.name, session, unpaidDays: unpaid },
       );
     }
   }
@@ -441,6 +448,8 @@ export async function evaluateRange(
             ? { type: leaveForDay.type, session: leaveForDay.session }
             : null,
         holidayName: cal?.holidayName ?? null,
+        unpaidLeaveDays: countsLeave && leaveForDay ? leaveForDay.unpaidDays : 0,
+        halfWorkingDay: kind === 'HALF_DAY',
         shift: shift ? { code: shift.code, name: shift.name } : null,
         scheduledStart: r.scheduledStart?.toISOString() ?? null,
         scheduledEnd: r.scheduledEnd?.toISOString() ?? null,

@@ -4,3 +4,8 @@ export * from './timezone.js';
 export * from './attendance.js';
 export * from './leave.js';
 export * from './recruitment.js';
+export * from './payroll-salary.js';
+export * from './payroll-statutory.js';
+export * from './income-tax.js';
+export * from './settlement.js';
+export * from './payroll-run.js';

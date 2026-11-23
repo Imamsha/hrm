@@ -20,6 +20,7 @@ import { EmployeesModule } from './modules/employees/employees.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { IdentityModule } from './modules/identity.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import { PayrollModule } from './modules/payroll/payroll.module.js';
 import { RecruitmentModule } from './modules/recruitment/recruitment.module.js';
 import { StructureModule } from './modules/structure/structure.module.js';
 import { TimeModule } from './modules/time/time.module.js';
@@ -72,6 +73,7 @@ export class AppModule {
         EmployeesModule,
         TimeModule,
         RecruitmentModule,
+        PayrollModule,
       ],
       providers: [
         // Order matters: rate limiting runs before authentication work.

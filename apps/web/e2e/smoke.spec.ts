@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { expect, type Page, test } from '@playwright/test';
+import { type Browser, expect, type Page, test } from '@playwright/test';
 
 const PASSWORD = 'blue-tiger-river-2026';
 
@@ -342,4 +342,153 @@ test('hire through an approved requisition and the public career site', async ({
   ).toBeVisible();
   await hrContext.close();
   await publicContext.close();
+});
+
+/** Invites a member with one system role and returns a signed-in page for them. */
+async function invitedPage(page: Page, browser: Browser, roleName: RegExp, fullName: string) {
+  const email = `invitee.${randomUUID().slice(0, 8)}@example.test`;
+  await page.goto('/admin/members');
+  await page.getByRole('button', { name: /Invite member/ }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Email/).fill(email);
+  await dialog.getByRole('checkbox', { name: roleName }).click();
+  await dialog.getByRole('button', { name: 'Send invitation' }).click();
+  await expect(dialog).toBeHidden();
+  const token = await tokenFromMail(email, '/accept-invitation');
+  const context = await browser.newContext();
+  const other = await context.newPage();
+  await other.goto(`/accept-invitation?token=${encodeURIComponent(token)}`);
+  await other.getByLabel(/^Full name/).fill(fullName);
+  await other.getByLabel(/^Password/).fill(PASSWORD);
+  await other.getByLabel(/^Confirm password/).fill(PASSWORD);
+  await other.getByRole('button', { name: /^Join/ }).click();
+  await expect(other.getByRole('heading', { name: 'Overview' })).toBeVisible({ timeout: 15_000 });
+  return { page: other, context };
+}
+
+// Statutory values below are FICTIONAL test numbers, not real rates.
+test('run payroll from configured rules to a finalized payslip', async ({
+  page,
+  browser,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'Covered on desktop');
+  test.setTimeout(150_000);
+  await registerViaUi(page);
+
+  await page.goto('/organization/structure?tab=companies');
+  await page.getByRole('button', { name: /New company/ }).click();
+  let dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Code/).fill('PAY');
+  await dialog.getByLabel(/^Name/).fill('Pay Co');
+  await dialog.getByRole('button', { name: 'Create company' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Components and a structure: basic 40 % of CTC, the balance as special allowance.
+  await page.goto('/payroll/setup?tab=components');
+  const components: [string, string, boolean][] = [
+    ['BASIC', 'Basic', true],
+    ['SPECIAL', 'Special allowance', false],
+  ];
+  for (const [code, name, pf] of components) {
+    await page.getByRole('button', { name: /New component/ }).click();
+    dialog = page.getByRole('dialog');
+    await dialog.getByLabel(/^Code/).fill(code);
+    await dialog.getByLabel(/^Name/).fill(name);
+    await dialog.getByLabel(/^Kind/).selectOption('EARNING');
+    if (pf) await dialog.getByRole('checkbox', { name: 'PF wages' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).toBeHidden();
+  }
+  await page.getByRole('tab', { name: 'Structures' }).click();
+  await page.getByRole('button', { name: /New structure/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Name/).fill('Standard');
+  await dialog.getByLabel('Line 1 component').selectOption({ label: 'Basic (BASIC)' });
+  await dialog.getByLabel('Line 1 calculation').selectOption('PERCENT_OF_CTC');
+  await dialog.getByLabel('Line 1 value').fill('40');
+  await dialog.getByRole('button', { name: /Add component/ }).click();
+  await dialog
+    .getByLabel('Line 2 component')
+    .selectOption({ label: 'Special allowance (SPECIAL)' });
+  await dialog.getByLabel('Line 2 calculation').selectOption('BALANCING');
+  await dialog.getByRole('button', { name: 'Create structure' }).click();
+  await expect(dialog).toBeHidden();
+
+  // A sourced EPF rule set, activated.
+  await page.goto('/payroll/statutory');
+  await page.getByRole('button', { name: /New rule set/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Rule type/).selectOption('EPF');
+  await dialog.getByLabel(/^Name/).fill('EPF (test values)');
+  await dialog.getByLabel(/^Effective from/).fill('2025-04-01');
+  await dialog.getByLabel(/^Source/).fill('Fictional E2E notification');
+  await dialog.getByLabel(/^Employee rate/).fill('10');
+  await dialog.getByLabel(/^Employer rate/).fill('10');
+  await dialog.getByLabel(/^Pension \(EPS\) share/).fill('6');
+  await dialog.getByLabel(/^Wage ceiling/).fill('20000');
+  await dialog.getByRole('button', { name: 'Save draft' }).click();
+  await expect(dialog).toBeHidden();
+  const rules = page.getByRole('table', { name: 'Statutory rule sets' });
+  await rules.getByRole('button', { name: 'Activate' }).click();
+  await expect(rules.getByText('active')).toBeVisible();
+
+  await page.goto('/payroll/setup?tab=settings');
+  await page.getByRole('checkbox', { name: /Absent days are loss of pay/ }).click();
+  await page.getByRole('button', { name: 'Save settings' }).click();
+  await expect(page.getByRole('button', { name: 'Save settings' })).toBeDisabled();
+
+  await page.goto('/people/employees');
+  await page.getByRole('button', { name: /Add employee/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^First name/).fill('Meera');
+  await dialog.getByLabel(/^Date of joining/).fill('2025-01-06');
+  await dialog.getByLabel(/^Company/).selectOption({ label: 'Pay Co (PAY)' });
+  await dialog.getByLabel(/^Employment type/).selectOption('FULL_TIME');
+  await dialog.getByRole('button', { name: 'Add employee' }).click();
+  await expect(page.getByRole('heading', { name: /Meera/ })).toBeVisible();
+
+  await page.goto('/payroll/employees');
+  await page.getByLabel('Employee', { exact: true }).selectOption({ index: 1 });
+  await page.getByRole('button', { name: /Set salary/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Salary structure/).selectOption({ label: 'Standard' });
+  await dialog.getByLabel(/^Annual CTC/).fill('600000');
+  await dialog.getByLabel(/^Effective from/).fill('2025-01-06');
+  await dialog.getByLabel(/^Reason/).selectOption('JOINING');
+  await dialog.getByRole('button', { name: 'Save salary' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(
+    page.getByRole('table', { name: 'Breakdown from 2025-01-06' }).getByText('₹20,000.00').first(),
+  ).toBeVisible();
+  await page.getByRole('checkbox', { name: 'Provident fund applies' }).click();
+  await page.getByRole('checkbox', { name: 'Deduct income tax (TDS)' }).click();
+  await page.getByRole('button', { name: 'Save profile' }).click();
+  await expect(page.getByText('Payroll profile saved.')).toBeVisible();
+
+  await page.goto('/payroll/runs');
+  await page.getByRole('button', { name: /New run/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Company/).selectOption({ label: 'Pay Co (PAY)' });
+  await dialog.getByLabel(/^Month/).selectOption('4');
+  await dialog.getByLabel(/^Year/).fill('2026');
+  await dialog.getByRole('button', { name: 'Create run' }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole('link', { name: 'April 2026' }).click();
+  await page.getByRole('button', { name: 'Calculate' }).click();
+  const totals = page.getByLabel('Run totals');
+  // 50000 gross − 2000 PF (10 % of the 20000 ceiling) = 48000.
+  await expect(totals.getByText('₹48,000.00')).toBeVisible({ timeout: 20_000 });
+  const runUrl = page.url();
+
+  const finance = await invitedPage(page, browser, /Finance/, 'Farah Finance');
+  await finance.page.goto(runUrl);
+  await finance.page.getByRole('button', { name: 'Approve' }).click();
+  await expect(finance.page.getByText('approved', { exact: true })).toBeVisible();
+  await finance.context.close();
+
+  await page.goto(runUrl);
+  await page.getByRole('button', { name: 'Finalize' }).click();
+  await expect(page.getByText('finalized', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Bank file/ })).toBeVisible();
 });

@@ -3,7 +3,9 @@
 Multi-tenant, AI-ready Human Resource Management SaaS platform — React web, React Native (Expo)
 mobile, NestJS API, PostgreSQL (RLS + pgvector), Redis/BullMQ — in a pnpm + Turborepo monorepo.
 
-**Current phase:** 01 — Foundation & architecture. See [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+**Current phase:** 08 — Expenses, assets & travel (Phases 01–07 delivered: foundation, auth/RBAC,
+organization, employees, attendance/leave, recruitment/onboarding, India payroll). See
+[`PROJECT_STATUS.md`](PROJECT_STATUS.md).
 
 ## Quick start
 

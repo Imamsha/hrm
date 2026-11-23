@@ -218,7 +218,21 @@ See ADR-012.
 - Panel feedback stays hidden from other panelists until each submits; stage history is
   append-only. AI parsing is deferred to Phase 11 and will never decide (ADR-013).
 
-## 16. ADR index
+## 16. India payroll (Phase 07)
+
+- **Pure engine** in `@hrm/business-rules` (salary breakdown, proration, loss of pay, EPF, ESI,
+  PT, income tax with rebate/surcharge relief and cess, HRA exemption, TDS projection, arrears,
+  gratuity, encashment, notice pay). Every rate, ceiling and slab is an argument.
+- **Statutory rule sets** are effective-dated, sourced configuration, frozen once active and
+  never overlapping (database exclusion constraint). None are seeded. A missing rule is a
+  problem on the employee's result and blocks approval; nothing falls back to a default.
+- **Runs** (`modules/payroll`): `payroll-calc.ts` gathers each employee's inputs (salary
+  segments, attendance loss of pay, adjustments, arrears, year-to-date from finalized runs) and
+  stores the result with an input snapshot. A run moves calculate → approve (someone else) →
+  finalize; finalized data is immutable at the database level. Payslips, the bank CSV and the
+  full & final settlement read finalized data.
+
+## 17. ADR index
 
 | ADR                                                                     | Title                                                            |
 | ----------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -235,3 +249,4 @@ See ADR-012.
 | [011](architecture/ADR-011-employee-management.md)                      | Employee records, effective-dated job history and sensitive data |
 | [012](architecture/ADR-012-time-attendance-leave.md)                    | Shifts, attendance and leave                                     |
 | [013](architecture/ADR-013-recruitment-and-onboarding.md)               | Recruitment (ATS), career portal and onboarding                  |
+| [014](architecture/ADR-014-india-payroll.md)                            | India payroll: sourced statutory rules, runs, payslips, F&F      |

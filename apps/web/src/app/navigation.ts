@@ -1,6 +1,13 @@
 import { PERMISSIONS, type Permission } from '@hrm/shared-types';
 import {
   Activity,
+  Banknote,
+  Calculator,
+  FileText,
+  Landmark,
+  LogOut,
+  IndianRupee,
+  Wallet,
   ClipboardCheck,
   ClipboardList,
   FileUser,
@@ -169,6 +176,53 @@ export const navigation: NavSection[] = [
         label: 'My onboarding',
         to: '/me/onboarding',
         icon: Rocket,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+    ],
+  },
+  {
+    label: 'Payroll',
+    items: [
+      {
+        label: 'Payroll runs',
+        to: '/payroll/runs',
+        icon: Calculator,
+        permission: PERMISSIONS.PAYROLL_RUN_READ,
+      },
+      {
+        label: 'Employee payroll',
+        to: '/payroll/employees',
+        icon: Wallet,
+        permission: PERMISSIONS.PAYROLL_SALARY_READ,
+      },
+      {
+        label: 'Full & final',
+        to: '/payroll/settlements',
+        icon: LogOut,
+        permission: PERMISSIONS.PAYROLL_SETTLEMENT_MANAGE,
+      },
+      {
+        label: 'Salary setup',
+        to: '/payroll/setup',
+        icon: Banknote,
+        permission: PERMISSIONS.PAYROLL_SALARY_READ,
+      },
+      {
+        label: 'Statutory rules',
+        to: '/payroll/statutory',
+        icon: Landmark,
+        permission: PERMISSIONS.PAYROLL_RUN_READ,
+      },
+      {
+        label: 'My payslips',
+        to: '/me/payslips',
+        icon: IndianRupee,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'My salary & tax',
+        to: '/me/salary',
+        icon: FileText,
         permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
       },
     ],

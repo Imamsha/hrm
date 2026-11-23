@@ -10,8 +10,8 @@ approval before the next phase starts.
 | 03    | Organization management: companies, legal entities, branches, departments, teams, designations, job grades, locations, org chart, settings, working days, holiday calendars                                                                               | ✅ Done — approved 2026-11-18, CI green                     |
 | 04    | Employee management: directory, profile, personal/employment info, documents, skills, education, experience, history, transfer, promotion, probation, confirmation, lifecycle                                                                             | ✅ Done — approved 2026-11-19, CI green                     |
 | 05    | Attendance, shifts & leave: clock-in/out, biometric, QR, shifts, rostering, overtime, leave policies/applications/balances, approvals, attendance analytics                                                                                               | 🟡 Implemented & verified locally — awaiting owner approval |
-| 06    | Recruitment & onboarding: requisitions, openings, career portal, candidates, resume parsing, interviews, assessments, offers, onboarding, joining docs, induction                                                                                         | 🟡 verified locally                                         |
-| 07    | India payroll: structures, earnings, deductions, EPF, ESI, PT, TDS, regimes, runs, payslips, arrears, approvals, bank files, F&F                                                                                                                          | ⏳                                                          |
+| 06    | Recruitment & onboarding: requisitions, openings, career portal, candidates, resume parsing, interviews, assessments, offers, onboarding, joining docs, induction                                                                                         | ✅ pushed `70f9e5c`                                         |
+| 07    | India payroll: structures, earnings, deductions, EPF, ESI, PT, TDS, regimes, runs, payslips, arrears, approvals, bank files, F&F                                                                                                                          | 🟡 verified locally                                         |
 | 08    | Expenses, assets & travel: claims, reimbursements, OCR, asset allocation/return, travel requests/approvals/settlements                                                                                                                                    | ⏳                                                          |
 | 09    | Performance & learning: cycles, OKRs, goals, KPIs, feedback, 360, training, learning paths, certifications, engagement                                                                                                                                    | ⏳                                                          |
 | 10    | Documents, helpdesk & workflows: document management, templates, e-signature integration, ticketing, SLA, knowledge base, workflow engine, approval designer, escalation, delegation                                                                      | ⏳                                                          |
@@ -67,3 +67,12 @@ approval before the next phase starts.
 - Department-scoped recruitment permissions (Phase 03 scope model).
 - Candidate data retention/erasure automation (DPDP) built on recorded consent.
 - Recruitment analytics (Phase 12); mobile recruitment/onboarding screens (Phase 13).
+
+## Carried forward from Phase 07
+
+- Statutory returns and challans (EPF ECR, ESI returns, Form 24Q, Form 16) and LWF.
+- Bank-specific payment file formats and payment status reconciliation (Phase 14 integrations).
+- Generated PDF payslips and settlement letters (Phase 10 documents).
+- Investment proof verification workflow and declaration lock dates (Phase 10 workflows).
+- Off-cycle runs (bonus, correction) and payroll variance analytics (Phase 12).
+- Batched/background calculation for very large runs (BullMQ), and mobile payslips (Phase 13).

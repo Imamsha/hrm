@@ -35,6 +35,32 @@ Integration tests use an isolated database (`hrm_test`), Redis DB 1 and bucket `
 (`TEST_*` variables in `.env.example`). The audit log is append-only, so tests create uniquely
 named tenants instead of cleaning up.
 
+## What is covered (Phase 07)
+
+All statutory values in tests are **fictional round numbers** (e.g. 10 % rates, a 20,000
+ceiling, state `IN-XX`) chosen for hand-checkable arithmetic — never real rates.
+
+- **business-rules** (`payroll.test.ts`, 25 tests): CTC breakdown (percent chains, balancing,
+  reserved employer cost, cycle and negative-balance problems), payable days and proration, loss of
+  pay (unpaid leave, absences, half days), EPF ceilings/voluntary/pension, ESI periods and coverage,
+  PT gender/month slabs, income tax (progressive slabs, rebate + marginal relief, surcharge +
+  marginal relief, cess, section caps, senior bands, rounding), HRA exemption, TDS spreading,
+  service years, gratuity, encashment, notice pay, arrears, full monthly pay with problems.
+- **validation** (`payroll.test.ts`): percentages, reserved codes, consecutive financial years, ESI
+  periods covering each month once, overlapping PT slabs, ascending tax bands, required source,
+  one balancing component, fixed-days setting.
+- **integration** (`payroll.int.test.ts`, 10 tests): components and immutable structures; drafts →
+  activation, no overlap, frozen config (also via direct SQL); salaries and profiles; a run with
+  EPF/PT/TDS figures, second-person approval, finalize, payslips; immutable finalized results;
+  audited bank CSV; back-dated revision → arrears per month; missing ESI/PT rules → problems
+  blocking approval; employee declarations; full & final with leave encashment excluded from the
+  next run; tenant isolation.
+- **web** (`features/payroll/payroll.test.tsx`): navigation gating, rule-set form requires a source
+  and sends exactly the entered values, run results with arrears and approval, problem banner,
+  payslip.
+- **E2E**: components → structure → sourced EPF rule (activated) → employee salary and profile →
+  run calculated → approved by an invited finance user → finalized with a bank file.
+
 ## What is covered (Phase 06)
 
 - **business-rules** (`recruitment.test.ts`): stage transitions, feedback summary, task due
@@ -187,3 +213,7 @@ named tenants instead of cleaning up.
   memory-constrained machine the dev API (`node --watch`) can restart meanwhile. Build first,
   start `pnpm --filter @hrm/web preview`, then run `pnpm --filter @hrm/web test:e2e` (the
   existing preview server is reused).
+- **E2E fails on a new screen while health checks pass:** an older API or preview process may still
+  hold `:3100` / `:4173` (stopping a `pnpm start` / `pnpm preview` wrapper can leave its node child
+  running, and the restart then exits with EADDRINUSE). Stop the processes listening on those ports,
+  restart, and check that a new route answers (401, not 404) before running Playwright.

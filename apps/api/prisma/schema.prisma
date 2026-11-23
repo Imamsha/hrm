@@ -85,6 +85,11 @@ model Organization {
   openings            JobOpening[]
   candidates          Candidate[]
   onboardingTemplates OnboardingTemplate[]
+  payrollSettings     PayrollSettings?
+  statutoryRuleSets   StatutoryRuleSet[]
+  salaryComponents    SalaryComponent[]
+  salaryStructures    SalaryStructure[]
+  payrollRuns         PayrollRun[]
   employees           Employee[]
   employmentRecords   EmploymentRecord[]
 
@@ -475,6 +480,7 @@ model Company {
   employmentRecords EmploymentRecord[]
   requisitions      JobRequisition[]
   openings          JobOpening[]
+  payrollRuns       PayrollRun[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, id])
@@ -944,32 +950,38 @@ model Employee {
   createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization      Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  membership        Membership?                @relation(fields: [membershipId], references: [id], onDelete: SetNull)
-  employmentRecords EmploymentRecord[]         @relation("EmployeeRecords")
-  managedRecords    EmploymentRecord[]         @relation("ManagerRecords")
-  statutoryIds      EmployeeStatutoryIds?
-  addresses         EmployeeAddress[]
-  emergencyContacts EmployeeEmergencyContact[]
-  familyMembers     EmployeeFamilyMember[]
-  education         EmployeeEducation[]
-  experience        EmployeeExperience[]
-  certifications    EmployeeCertification[]
-  skills            EmployeeSkill[]
-  bankAccounts      EmployeeBankAccount[]
-  documents         EmployeeDocument[]
-  shiftAssignments  ShiftAssignment[]
-  rosterEntries     RosterEntry[]
-  punches           AttendancePunch[]
-  regularizations   AttendanceRegularization[]
-  leaveRequests     LeaveRequest[]             @relation("LeaveRequests")
-  leaveApprovals    LeaveRequest[]             @relation("LeaveApprovals")
-  leaveLedger       LeaveLedgerEntry[]
-  hiringOpenings    JobOpening[]               @relation("HiringManager")
-  hiredCandidate    Candidate?                 @relation("HiredCandidate")
-  panelSeats        InterviewPanelist[]        @relation("Panelist")
-  onboardingPlans   OnboardingPlan[]           @relation("OnboardingPlans")
-  onboardingTasks   OnboardingTask[]           @relation("OnboardingAssignee")
+  organization       Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  membership         Membership?                @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  employmentRecords  EmploymentRecord[]         @relation("EmployeeRecords")
+  managedRecords     EmploymentRecord[]         @relation("ManagerRecords")
+  statutoryIds       EmployeeStatutoryIds?
+  addresses          EmployeeAddress[]
+  emergencyContacts  EmployeeEmergencyContact[]
+  familyMembers      EmployeeFamilyMember[]
+  education          EmployeeEducation[]
+  experience         EmployeeExperience[]
+  certifications     EmployeeCertification[]
+  skills             EmployeeSkill[]
+  bankAccounts       EmployeeBankAccount[]
+  documents          EmployeeDocument[]
+  shiftAssignments   ShiftAssignment[]
+  rosterEntries      RosterEntry[]
+  punches            AttendancePunch[]
+  regularizations    AttendanceRegularization[]
+  leaveRequests      LeaveRequest[]             @relation("LeaveRequests")
+  leaveApprovals     LeaveRequest[]             @relation("LeaveApprovals")
+  leaveLedger        LeaveLedgerEntry[]
+  hiringOpenings     JobOpening[]               @relation("HiringManager")
+  hiredCandidate     Candidate?                 @relation("HiredCandidate")
+  panelSeats         InterviewPanelist[]        @relation("Panelist")
+  onboardingPlans    OnboardingPlan[]           @relation("OnboardingPlans")
+  onboardingTasks    OnboardingTask[]           @relation("OnboardingAssignee")
+  salaries           EmployeeSalary[]
+  payrollProfile     EmployeePayrollProfile?
+  taxDeclarations    TaxDeclaration[]
+  payrollAdjustments PayrollAdjustment[]
+  payrollResults     PayrollResult[]
+  settlements        PayrollSettlement[]
 
   @@unique([organizationId, employeeNumber])
   @@unique([organizationId, id])
@@ -1913,4 +1925,407 @@ model OnboardingTask {
   @@index([organizationId, planId])
   @@index([organizationId, assigneeEmployeeId, status])
   @@map("onboarding_tasks")
+}
+
+// =============================================================================================
+// Phase 07 — India payroll (ADR-014). Statutory values are organization configuration in
+// statutory_rule_sets; none are seeded.
+// =============================================================================================
+
+enum PayableDaysMethod {
+  CALENDAR_DAYS
+  FIXED_DAYS
+  WORKING_DAYS
+}
+
+enum StatutoryRuleType {
+  EPF
+  ESI
+  PT
+  INCOME_TAX
+  GRATUITY
+}
+
+enum RuleSetStatus {
+  DRAFT
+  ACTIVE
+  RETIRED
+}
+
+enum TaxRegime {
+  OLD
+  NEW
+}
+
+enum SalaryComponentKind {
+  EARNING
+  DEDUCTION
+  EMPLOYER_CONTRIBUTION
+}
+
+enum ComponentCalcType {
+  FIXED
+  PERCENT_OF_CTC
+  PERCENT_OF_COMPONENT
+  BALANCING
+}
+
+enum SalaryRevisionReason {
+  JOINING
+  REVISION
+  PROMOTION
+  CORRECTION
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  CALCULATED
+  APPROVED
+  FINALIZED
+  CANCELLED
+}
+
+enum PayLineCategory {
+  EARNING
+  DEDUCTION
+  EMPLOYER_CONTRIBUTION
+}
+
+enum PayLineSource {
+  STRUCTURE
+  ADJUSTMENT
+  ARREARS
+  STATUTORY
+  SETTLEMENT
+}
+
+enum SettlementStatus {
+  DRAFT
+  CALCULATED
+  APPROVED
+  FINALIZED
+  CANCELLED
+}
+
+/// One row per organization: how payable days and loss of pay are counted.
+model PayrollSettings {
+  organizationId      String            @id @map("organization_id") @db.Uuid
+  payableDaysMethod   PayableDaysMethod @default(CALENDAR_DAYS) @map("payable_days_method")
+  fixedDays           Int?              @map("fixed_days") @db.SmallInt
+  absentIsLossOfPay   Boolean           @default(true) @map("absent_is_loss_of_pay")
+  hraComponentCode    String?           @map("hra_component_code") @db.VarChar(20)
+  basicComponentCodes String[]          @default([]) @map("basic_component_codes") @db.VarChar(20)
+  /// Regime used when an employee has not chosen one for the financial year (organization decision).
+  defaultTaxRegime    TaxRegime?        @map("default_tax_regime")
+  updatedAt           DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@map("payroll_settings")
+}
+
+/// Effective-dated statutory configuration (EPF, ESI, PT per state, income tax per regime, gratuity).
+/// `config` is validated by @hrm/validation for its type and is immutable once ACTIVE.
+model StatutoryRuleSet {
+  id                String            @id @default(uuid(7)) @db.Uuid
+  organizationId    String            @map("organization_id") @db.Uuid
+  type              StatutoryRuleType
+  name              String            @db.VarChar(200)
+  /// PT only: ISO 3166-2:IN code.
+  stateCode         String?           @map("state_code") @db.VarChar(6)
+  /// INCOME_TAX only.
+  regime            TaxRegime?
+  effectiveFrom     DateTime          @map("effective_from") @db.Date
+  effectiveTo       DateTime?         @map("effective_to") @db.Date
+  status            RuleSetStatus     @default(DRAFT)
+  sourceReference   String            @map("source_reference") @db.VarChar(1000)
+  notes             String?           @db.VarChar(2000)
+  config            Json
+  createdByUserId   String?           @map("created_by_user_id") @db.Uuid
+  activatedByUserId String?           @map("activated_by_user_id") @db.Uuid
+  activatedAt       DateTime?         @map("activated_at") @db.Timestamptz(6)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, type, status, effectiveFrom])
+  @@map("statutory_rule_sets")
+}
+
+model SalaryComponent {
+  id             String              @id @default(uuid(7)) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  code           String              @db.VarChar(20)
+  name           String              @db.VarChar(100)
+  kind           SalaryComponentKind
+  taxable        Boolean             @default(true)
+  pfWage         Boolean             @default(false) @map("pf_wage")
+  esiWage        Boolean             @default(false) @map("esi_wage")
+  ptWage         Boolean             @default(false) @map("pt_wage")
+  prorate        Boolean             @default(true)
+  payslipOrder   Int                 @default(100) @map("payslip_order") @db.SmallInt
+  description    String?             @db.VarChar(500)
+  status         RecordStatus        @default(ACTIVE)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization   Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  structureLines SalaryStructureComponent[] @relation("StructureComponent")
+  baseOfLines    SalaryStructureComponent[] @relation("StructureBaseComponent")
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@map("salary_components")
+}
+
+/// A salary template. Its component lines are immutable after creation (create a new structure to change them),
+/// so a salary's breakdown is reproducible.
+model SalaryStructure {
+  id                     String       @id @default(uuid(7)) @db.Uuid
+  organizationId         String       @map("organization_id") @db.Uuid
+  name                   String       @db.VarChar(100)
+  description            String?      @db.VarChar(500)
+  employerStatutoryInCtc Boolean      @default(false) @map("employer_statutory_in_ctc")
+  status                 RecordStatus @default(ACTIVE)
+  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  components   SalaryStructureComponent[]
+  salaries     EmployeeSalary[]
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, id])
+  @@map("salary_structures")
+}
+
+model SalaryStructureComponent {
+  organizationId  String            @map("organization_id") @db.Uuid
+  structureId     String            @map("structure_id") @db.Uuid
+  componentId     String            @map("component_id") @db.Uuid
+  calcType        ComponentCalcType @map("calc_type")
+  percent         Decimal?          @db.Decimal(7, 4)
+  monthlyAmount   Decimal?          @map("monthly_amount") @db.Decimal(14, 2)
+  baseComponentId String?           @map("base_component_id") @db.Uuid
+  sortOrder       Int               @default(0) @map("sort_order") @db.SmallInt
+
+  structure     SalaryStructure  @relation(fields: [organizationId, structureId], references: [organizationId, id], onDelete: Cascade)
+  component     SalaryComponent  @relation("StructureComponent", fields: [organizationId, componentId], references: [organizationId, id], onDelete: Restrict)
+  baseComponent SalaryComponent? @relation("StructureBaseComponent", fields: [baseComponentId], references: [id], onDelete: Restrict)
+
+  @@id([structureId, componentId])
+  @@index([organizationId, structureId])
+  @@map("salary_structure_components")
+}
+
+/// Effective-dated salary of an employee (joining, revisions). A past effective date produces arrears.
+model EmployeeSalary {
+  id              String               @id @default(uuid(7)) @db.Uuid
+  organizationId  String               @map("organization_id") @db.Uuid
+  employeeId      String               @map("employee_id") @db.Uuid
+  structureId     String               @map("structure_id") @db.Uuid
+  annualCtc       Decimal              @map("annual_ctc") @db.Decimal(14, 2)
+  effectiveFrom   DateTime             @map("effective_from") @db.Date
+  reason          SalaryRevisionReason
+  note            String?              @db.VarChar(1000)
+  createdByUserId String?              @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  employee  Employee        @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+  structure SalaryStructure @relation(fields: [organizationId, structureId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([employeeId, effectiveFrom])
+  @@index([organizationId, employeeId, effectiveFrom])
+  @@map("employee_salaries")
+}
+
+model EmployeePayrollProfile {
+  employeeId           String   @id @map("employee_id") @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  pfApplicable         Boolean  @default(false) @map("pf_applicable")
+  voluntaryPfFullWages Boolean  @default(false) @map("voluntary_pf_full_wages")
+  epsEligible          Boolean  @default(true) @map("eps_eligible")
+  esiApplicable        Boolean  @default(false) @map("esi_applicable")
+  esiNumber            String?  @map("esi_number") @db.VarChar(17)
+  ptStateCode          String?  @map("pt_state_code") @db.VarChar(6)
+  metroCity            Boolean  @default(false) @map("metro_city")
+  taxApplicable        Boolean  @default(true) @map("tax_applicable")
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, employeeId])
+  @@map("employee_payroll_profiles")
+}
+
+/// Regime choice and investment declarations for one financial year.
+model TaxDeclaration {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  employeeId      String    @map("employee_id") @db.Uuid
+  financialYear   String    @map("financial_year") @db.Char(7)
+  regime          TaxRegime
+  rentPaidAnnual  Decimal   @default(0) @map("rent_paid_annual") @db.Decimal(14, 2)
+  /// Section code → declared annual amount (decimal strings).
+  deductions      Json      @default("{}")
+  updatedByUserId String?   @map("updated_by_user_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([employeeId, financialYear])
+  @@index([organizationId, financialYear])
+  @@map("tax_declarations")
+}
+
+model PayrollRun {
+  id                 String           @id @default(uuid(7)) @db.Uuid
+  organizationId     String           @map("organization_id") @db.Uuid
+  companyId          String           @map("company_id") @db.Uuid
+  year               Int              @db.SmallInt
+  month              Int              @db.SmallInt
+  periodStart        DateTime         @map("period_start") @db.Date
+  periodEnd          DateTime         @map("period_end") @db.Date
+  status             PayrollRunStatus @default(DRAFT)
+  employeeCount      Int              @default(0) @map("employee_count")
+  problemCount       Int              @default(0) @map("problem_count")
+  totalGross         Decimal          @default(0) @map("total_gross") @db.Decimal(16, 2)
+  totalDeductions    Decimal          @default(0) @map("total_deductions") @db.Decimal(16, 2)
+  totalNet           Decimal          @default(0) @map("total_net") @db.Decimal(16, 2)
+  totalEmployerCost  Decimal          @default(0) @map("total_employer_cost") @db.Decimal(16, 2)
+  note               String?          @db.VarChar(1000)
+  createdByUserId    String?          @map("created_by_user_id") @db.Uuid
+  calculatedByUserId String?          @map("calculated_by_user_id") @db.Uuid
+  calculatedAt       DateTime?        @map("calculated_at") @db.Timestamptz(6)
+  approvedByUserId   String?          @map("approved_by_user_id") @db.Uuid
+  approvedAt         DateTime?        @map("approved_at") @db.Timestamptz(6)
+  finalizedByUserId  String?          @map("finalized_by_user_id") @db.Uuid
+  finalizedAt        DateTime?        @map("finalized_at") @db.Timestamptz(6)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  company      Company             @relation(fields: [organizationId, companyId], references: [organizationId, id], onDelete: Restrict)
+  results      PayrollResult[]
+  adjustments  PayrollAdjustment[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, companyId, year, month])
+  @@map("payroll_runs")
+}
+
+/// One-time earnings or deductions for an employee in a run (bonus, incentive, recovery, …).
+model PayrollAdjustment {
+  id              String          @id @default(uuid(7)) @db.Uuid
+  organizationId  String          @map("organization_id") @db.Uuid
+  runId           String          @map("run_id") @db.Uuid
+  employeeId      String          @map("employee_id") @db.Uuid
+  code            String          @db.VarChar(20)
+  name            String          @db.VarChar(100)
+  category        PayLineCategory
+  amount          Decimal         @db.Decimal(14, 2)
+  taxable         Boolean         @default(true)
+  pfWage          Boolean         @default(false) @map("pf_wage")
+  esiWage         Boolean         @default(false) @map("esi_wage")
+  ptWage          Boolean         @default(false) @map("pt_wage")
+  note            String?         @db.VarChar(500)
+  createdByUserId String?         @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  run      PayrollRun @relation(fields: [organizationId, runId], references: [organizationId, id], onDelete: Cascade)
+  employee Employee   @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, runId, employeeId])
+  @@map("payroll_adjustments")
+}
+
+/// An employee's computed pay in a run, with the snapshot of every input used (reproducible).
+model PayrollResult {
+  id                  String   @id @default(uuid(7)) @db.Uuid
+  organizationId      String   @map("organization_id") @db.Uuid
+  runId               String   @map("run_id") @db.Uuid
+  employeeId          String   @map("employee_id") @db.Uuid
+  payableDays         Decimal  @map("payable_days") @db.Decimal(5, 2)
+  periodDays          Decimal  @map("period_days") @db.Decimal(5, 2)
+  lossOfPayDays       Decimal  @default(0) @map("loss_of_pay_days") @db.Decimal(5, 2)
+  gross               Decimal  @db.Decimal(14, 2)
+  totalDeductions     Decimal  @map("total_deductions") @db.Decimal(14, 2)
+  netPay              Decimal  @map("net_pay") @db.Decimal(14, 2)
+  employerCost        Decimal  @map("employer_cost") @db.Decimal(14, 2)
+  taxableGross        Decimal  @default(0) @map("taxable_gross") @db.Decimal(14, 2)
+  pfWages             Decimal  @default(0) @map("pf_wages") @db.Decimal(14, 2)
+  esiWages            Decimal  @default(0) @map("esi_wages") @db.Decimal(14, 2)
+  ptWages             Decimal  @default(0) @map("pt_wages") @db.Decimal(14, 2)
+  esiCovered          Boolean  @default(false) @map("esi_covered")
+  annualTaxProjection Decimal? @map("annual_tax_projection") @db.Decimal(14, 2)
+  snapshot            Json
+  taxTrace            Json?    @map("tax_trace")
+  problems            Json     @default("[]")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  run      PayrollRun          @relation(fields: [organizationId, runId], references: [organizationId, id], onDelete: Restrict)
+  employee Employee            @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+  lines    PayrollResultLine[]
+
+  @@unique([runId, employeeId])
+  @@unique([organizationId, id])
+  @@index([organizationId, employeeId])
+  @@map("payroll_results")
+}
+
+model PayrollResultLine {
+  id             String          @id @default(uuid(7)) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  resultId       String          @map("result_id") @db.Uuid
+  code           String          @db.VarChar(24)
+  name           String          @db.VarChar(120)
+  category       PayLineCategory
+  source         PayLineSource
+  amount         Decimal         @db.Decimal(14, 2)
+  taxable        Boolean         @default(false)
+  /// ARREARS lines: the past month the difference belongs to.
+  forYear        Int?            @map("for_year") @db.SmallInt
+  forMonth       Int?            @map("for_month") @db.SmallInt
+  sortOrder      Int             @default(0) @map("sort_order") @db.SmallInt
+
+  result PayrollResult @relation(fields: [organizationId, resultId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, resultId])
+  @@map("payroll_result_lines")
+}
+
+/// Full & final settlement of a separated employee.
+model PayrollSettlement {
+  id                 String           @id @default(uuid(7)) @db.Uuid
+  organizationId     String           @map("organization_id") @db.Uuid
+  employeeId         String           @map("employee_id") @db.Uuid
+  lastWorkingDate    DateTime         @map("last_working_date") @db.Date
+  status             SettlementStatus @default(DRAFT)
+  inputs             Json
+  lines              Json             @default("[]")
+  gratuity           Decimal          @default(0) @db.Decimal(14, 2)
+  leaveEncashment    Decimal          @default(0) @map("leave_encashment") @db.Decimal(14, 2)
+  noticePay          Decimal          @default(0) @map("notice_pay") @db.Decimal(14, 2)
+  totalEarnings      Decimal          @default(0) @map("total_earnings") @db.Decimal(14, 2)
+  totalDeductions    Decimal          @default(0) @map("total_deductions") @db.Decimal(14, 2)
+  netPayable         Decimal          @default(0) @map("net_payable") @db.Decimal(14, 2)
+  problems           Json             @default("[]")
+  note               String?          @db.VarChar(1000)
+  calculatedByUserId String?          @map("calculated_by_user_id") @db.Uuid
+  calculatedAt       DateTime?        @map("calculated_at") @db.Timestamptz(6)
+  approvedByUserId   String?          @map("approved_by_user_id") @db.Uuid
+  approvedAt         DateTime?        @map("approved_at") @db.Timestamptz(6)
+  finalizedByUserId  String?          @map("finalized_by_user_id") @db.Uuid
+  finalizedAt        DateTime?        @map("finalized_at") @db.Timestamptz(6)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, status])
+  @@map("payroll_settlements")
 }

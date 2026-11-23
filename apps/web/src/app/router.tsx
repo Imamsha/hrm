@@ -11,6 +11,15 @@ import { EmployeeProfilePage, MyProfilePage } from '@/features/employees/profile
 import { MembersPage } from '@/features/members/members-page';
 import { OrganizationSettingsPage } from '@/features/organization/organization-settings-page';
 import { OverviewPage } from '@/features/overview/overview-page';
+import {
+  EmployeePayrollPage,
+  MyPayslipsPage,
+  MySalaryPage,
+  PayslipPage,
+  SettlementsPage,
+} from '@/features/payroll/payroll-people-pages';
+import { PayrollRunPage, PayrollRunsPage } from '@/features/payroll/payroll-runs-pages';
+import { SalarySetupPage, StatutoryRulesPage } from '@/features/payroll/payroll-setup-pages';
 import { ApplicationPage } from '@/features/recruitment/application-page';
 import { CareerJobPage, CareersPage } from '@/features/recruitment/careers-pages';
 import {
@@ -264,6 +273,105 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
                     <MyOnboardingPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'payroll/runs',
+                handle: crumb('Payroll runs'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_RUN_READ}>
+                    <PayrollRunsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'payroll/runs/:id',
+                handle: crumb('Payroll run'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_RUN_READ}>
+                    <PayrollRunPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'payroll/payslips/:id',
+                handle: crumb('Payslip'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_RUN_READ}>
+                    <PayslipPage self={false} />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'payroll/employees',
+                handle: crumb('Employee payroll'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_SALARY_READ}>
+                    <EmployeePayrollPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'payroll/employees/:id',
+                handle: crumb('Employee payroll'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_SALARY_READ}>
+                    <EmployeePayrollPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'payroll/setup',
+                handle: crumb('Salary setup'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_SALARY_READ}>
+                    <SalarySetupPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'payroll/statutory',
+                handle: crumb('Statutory rules'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_RUN_READ}>
+                    <StatutoryRulesPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'payroll/settlements',
+                handle: crumb('Full & final'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_SETTLEMENT_MANAGE}>
+                    <SettlementsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/payslips',
+                handle: crumb('My payslips'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <MyPayslipsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/payslips/:id',
+                handle: crumb('Payslip'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <PayslipPage self />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/salary',
+                handle: crumb('My salary & tax'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <MySalaryPage />
                   </RequirePermission>
                 ),
               },

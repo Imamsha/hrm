@@ -64,6 +64,10 @@ export interface AttendanceDayItem {
   status: AttendanceStatusValue;
   /** Leave covering the day (approved), if any. */
   leave: { type: string; session: 'FULL' | 'FIRST_HALF' | 'SECOND_HALF' } | null;
+  /** Days of the leave on this day that are unpaid (0, 0.5 or 1); payroll loss of pay. */
+  unpaidLeaveDays?: number;
+  /** The calendar makes this a half working day. */
+  halfWorkingDay?: boolean;
   holidayName: string | null;
   shift: { code: string; name: string } | null;
   scheduledStart: string | null;

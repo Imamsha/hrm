@@ -50,6 +50,15 @@ other tenants → 404/400).
 | `onboarding.template.manage`      | Onboarding templates (Phase 06)                                                                                    |
 | `onboarding.plan.read`            | View onboarding plans and templates (Phase 06)                                                                     |
 | `onboarding.plan.manage`          | Start/cancel plans, complete or skip any task (Phase 06)                                                           |
+| `payroll.settings.manage`         | Payroll settings, salary components and structures (Phase 07)                                                      |
+| `payroll.statutory.manage`        | Statutory rule sets: create drafts, activate, close, retire (Phase 07)                                             |
+| `payroll.salary.read`             | Employee salaries, payroll profiles and declarations (Phase 07)                                                    |
+| `payroll.salary.manage`           | Set salaries and revisions, profiles and declarations (Phase 07)                                                   |
+| `payroll.run.read`                | Payroll runs, results, payslips, rule sets (Phase 07)                                                              |
+| `payroll.run.manage`              | Create, calculate, adjust, finalize and cancel runs (Phase 07)                                                     |
+| `payroll.run.approve`             | Approve runs and settlements — never one you calculated (Phase 07)                                                 |
+| `payroll.bank_file.export`        | Export bank payment files of finalized runs (Phase 07)                                                             |
+| `payroll.settlement.manage`       | Prepare and finalize full & final settlements (Phase 07)                                                           |
 | `users.member.read`               | View members (and pending invitations)                                                                             |
 | `users.member.invite`             | Invite people, revoke invitations                                                                                  |
 | `users.member.update`             | Suspend/reactivate members, change role assignments                                                                |
@@ -187,6 +196,24 @@ Phase 06 endpoints: `/recruitment/**` require the permission named in
 `/me/onboarding/**`, `GET /onboarding/plans/:id` and `PUT /onboarding/tasks/:id/status` need
 `employees.self.access` plus being the panelist / joiner / assignee (or HR). `/careers/**` is
 public and rate-limited.
+
+### Phase 07 role grants
+
+| Permission                | Owner | Admin | HR admin | Finance | Manager | Employee |
+| ------------------------- | :---: | :---: | :------: | :-----: | :-----: | :------: |
+| payroll.settings.manage   |   ✓   |   ✓   |          |    ✓    |         |          |
+| payroll.statutory.manage  |   ✓   |   ✓   |          |    ✓    |         |          |
+| payroll.salary.read       |   ✓   |   ✓   |    ✓     |    ✓    |         |          |
+| payroll.salary.manage     |   ✓   |   ✓   |    ✓     |    ✓    |         |          |
+| payroll.run.read          |   ✓   |   ✓   |    ✓     |    ✓    |         |          |
+| payroll.run.manage        |   ✓   |   ✓   |    ✓     |    ✓    |         |          |
+| payroll.run.approve       |   ✓   |   ✓   |          |    ✓    |         |          |
+| payroll.bank_file.export  |   ✓   |   ✓   |          |    ✓    |         |          |
+| payroll.settlement.manage |   ✓   |   ✓   |    ✓     |    ✓    |         |          |
+
+Payroll permissions are organization-wide. Approval additionally requires being a different
+person from the calculator (API and database CHECK). `/me/salary`, `/me/payslips/**` and
+`/me/tax-declarations/**` need `employees.self.access` and return only the caller's own data.
 
 ## Access scopes
 

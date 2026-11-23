@@ -59,6 +59,15 @@ other tenants → 404/400).
 | `payroll.run.approve`             | Approve runs and settlements — never one you calculated (Phase 07)                                                 |
 | `payroll.bank_file.export`        | Export bank payment files of finalized runs (Phase 07)                                                             |
 | `payroll.settlement.manage`       | Prepare and finalize full & final settlements (Phase 07)                                                           |
+| `expenses.category.manage`        | Expense categories, policy limits and settings (Phase 08)                                                          |
+| `expenses.claim.read`             | View all expense claims (Phase 08)                                                                                 |
+| `expenses.claim.verify`           | Finance verification, approved amounts, payout, mark paid (Phase 08)                                               |
+| `travel.request.read`             | View all travel requests (Phase 08)                                                                                |
+| `travel.request.approve`          | Approve trips of employees without a reporting manager (Phase 08)                                                  |
+| `travel.desk.manage`              | Bookings, advances and trip settlement (Phase 08)                                                                  |
+| `assets.asset.read`               | View the asset register and licences (Phase 08)                                                                    |
+| `assets.asset.manage`             | Register assets, allocate, return, status, maintenance (Phase 08)                                                  |
+| `assets.license.manage`           | Software licences and seat assignments (Phase 08)                                                                  |
 | `users.member.read`               | View members (and pending invitations)                                                                             |
 | `users.member.invite`             | Invite people, revoke invitations                                                                                  |
 | `users.member.update`             | Suspend/reactivate members, change role assignments                                                                |
@@ -214,6 +223,24 @@ public and rate-limited.
 Payroll permissions are organization-wide. Approval additionally requires being a different
 person from the calculator (API and database CHECK). `/me/salary`, `/me/payslips/**` and
 `/me/tax-declarations/**` need `employees.self.access` and return only the caller's own data.
+
+### Phase 08 role grants
+
+| Permission               | Owner | Admin | HR admin | Finance | Manager | Employee |
+| ------------------------ | :---: | :---: | :------: | :-----: | :-----: | :------: |
+| expenses.category.manage |   ✓   |   ✓   |          |    ✓    |         |          |
+| expenses.claim.read      |   ✓   |   ✓   |    ✓     |    ✓    |         |          |
+| expenses.claim.verify    |   ✓   |   ✓   |          |    ✓    |         |          |
+| travel.request.read      |   ✓   |   ✓   |    ✓     |    ✓    |         |          |
+| travel.request.approve   |   ✓   |   ✓   |    ✓     |         |         |          |
+| travel.desk.manage       |   ✓   |   ✓   |    ✓     |    ✓    |         |          |
+| assets.asset.read        |   ✓   |   ✓   |    ✓     |         |         |          |
+| assets.asset.manage      |   ✓   |   ✓   |    ✓     |         |         |          |
+| assets.license.manage    |   ✓   |   ✓   |    ✓     |         |         |          |
+
+Manager approval of claims and trips is **relationship-based** (the reporting manager at
+submission), not a permission; nobody approves or verifies their own claim or trip.
+`/me/expense-claims`, `/me/trips` and `/me/assets` need `employees.self.access`.
 
 ## Access scopes
 

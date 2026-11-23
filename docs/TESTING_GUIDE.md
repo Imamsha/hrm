@@ -35,6 +35,24 @@ Integration tests use an isolated database (`hrm_test`), Redis DB 1 and bucket `
 (`TEST_*` variables in `.env.example`). The audit log is append-only, so tests create uniquely
 named tenants instead of cleaning up.
 
+## What is covered (Phase 08)
+
+- **business-rules** (`expenses.test.ts`, 9 tests): currency conversion, blocking vs justified policy
+  issues (receipts, future/stale dates, inactive categories, item/daily/monthly limits with
+  month-to-date spend), claim state moves, travel settlement, straight-line book value.
+- **validation** (`expenses.test.ts`): claim defaults, exchange rates, rejection reasons,
+  unreimbursed items need a note, trip legs within dates, asset tags/warranty/salvage, partial
+  updates leaving omitted fields untouched.
+- **integration** (`expenses.int.test.ts`, 6 tests): policy check → receipts → manager routing →
+  finance-approved amounts; frozen items (direct SQL) and tenant isolation; reimbursement through
+  payroll (taxable split) marked reimbursed on finalize; trip with advance settled net and the
+  balance recovered by the next payroll; one open allocation per asset, acknowledgement, return,
+  licence seat limit; F&F flags assigned licence seats.
+- **web** (`features/expenses/expenses.test.tsx`): navigation gating, draft creation body, policy
+  issues and manager approval, trip settlement preview, asset acknowledgement.
+- **E2E**: owner (no manager) claims → routed to finance → invited finance user approves and marks
+  paid → asset registered, allocated and acknowledged.
+
 ## What is covered (Phase 07)
 
 All statutory values in tests are **fictional round numbers** (e.g. 10 % rates, a 20,000

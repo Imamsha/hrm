@@ -9,3 +9,4 @@ export * from './payroll-statutory.js';
 export * from './income-tax.js';
 export * from './settlement.js';
 export * from './payroll-run.js';
+export * from './expenses.js';

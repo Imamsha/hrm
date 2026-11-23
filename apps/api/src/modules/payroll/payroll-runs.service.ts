@@ -33,6 +33,7 @@ import { selfEmployeeId } from '../time/time-context.js';
 import { calculateEmployee } from './payroll-calc.js';
 import { monthBounds, money, moneyOrNull } from './payroll-common.js';
 import { settingsOf } from './payroll-config.service.js';
+import { completeLinks, linkToRun, releaseLinks } from './payroll-links.js';
 
 type RunQuery = z.output<typeof payrollRunListQuerySchema>;
 
@@ -338,6 +339,12 @@ export class PayrollRunsService {
         }
         const settings = await settingsOf(tx);
         const adjustments = await tx.payrollAdjustment.findMany({ where: { runId: id } });
+        // Approved expense reimbursements and trip balances paid or recovered through payroll.
+        const linked = await linkToRun(
+          tx,
+          id,
+          employees.map((e) => e.id),
+        );
         let gross = new Decimal(0);
         let deductions = new Decimal(0);
         let net = new Decimal(0);
@@ -361,7 +368,7 @@ export class PayrollRunsService {
             year: run.year,
             month: run.month,
             settings,
-            adjustments: mine,
+            adjustments: [...mine, ...(linked.get(emp.id) ?? [])],
           });
           const r = c.result;
           if (c.problems.length) withProblems += 1;
@@ -644,6 +651,7 @@ export class PayrollRunsService {
         where: { id },
         data: { status: 'FINALIZED', finalizedByUserId: principal.userId, finalizedAt: new Date() },
       });
+      await completeLinks(tx, id, principal.organizationId ?? '', principal.userId);
       await this.audit.record(tx, {
         action: 'payroll.run.finalized',
         entityType: 'payroll_run',
@@ -660,6 +668,7 @@ export class PayrollRunsService {
       if (run.status === 'FINALIZED' || run.status === 'CANCELLED')
         throw AppException.conflict(`A ${run.status.toLowerCase()} run cannot be cancelled`);
       await tx.payrollRun.update({ where: { id }, data: { status: 'CANCELLED' } });
+      await releaseLinks(tx, id);
       await this.audit.record(tx, {
         action: 'payroll.run.cancelled',
         entityType: 'payroll_run',

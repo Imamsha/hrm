@@ -10,3 +10,4 @@ export * from './structure.js';
 export * from './time.js';
 export * from './recruitment.js';
 export * from './payroll.js';
+export * from './expenses.js';

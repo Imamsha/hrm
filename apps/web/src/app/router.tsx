@@ -11,6 +11,14 @@ import { EmployeeProfilePage, MyProfilePage } from '@/features/employees/profile
 import { MembersPage } from '@/features/members/members-page';
 import { OrganizationSettingsPage } from '@/features/organization/organization-settings-page';
 import { OverviewPage } from '@/features/overview/overview-page';
+import { AssetPage, AssetsPage, LicensesPage, MyAssetsPage } from '@/features/expenses/asset-pages';
+import {
+  ClaimPage,
+  ExpenseApprovalsPage,
+  ExpenseSetupPage,
+  MyExpensesPage,
+} from '@/features/expenses/claim-pages';
+import { MyTripsPage, TravelRequestsPage, TripPage } from '@/features/expenses/travel-pages';
 import {
   EmployeePayrollPage,
   MyPayslipsPage,
@@ -372,6 +380,105 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
                     <MySalaryPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/expenses',
+                handle: crumb('My expenses'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <MyExpensesPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'expenses/claims/:id',
+                handle: crumb('Expense claim'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <ClaimPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'expenses/approvals',
+                handle: crumb('Expense approvals'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <ExpenseApprovalsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'expenses/setup',
+                handle: crumb('Expense setup'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EXPENSES_CATEGORY_MANAGE}>
+                    <ExpenseSetupPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/trips',
+                handle: crumb('My travel'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <MyTripsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'travel/trips/:id',
+                handle: crumb('Trip'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <TripPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'travel/requests',
+                handle: crumb('Travel requests'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <TravelRequestsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'assets',
+                handle: crumb('Assets'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.ASSETS_ASSET_READ}>
+                    <AssetsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'assets/licenses',
+                handle: crumb('Software licences'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.ASSETS_ASSET_READ}>
+                    <LicensesPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'assets/:id',
+                handle: crumb('Asset'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.ASSETS_ASSET_READ}>
+                    <AssetPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/assets',
+                handle: crumb('My assets'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <MyAssetsPage />
                   </RequirePermission>
                 ),
               },

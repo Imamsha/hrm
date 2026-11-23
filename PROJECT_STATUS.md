@@ -4,120 +4,100 @@ _Last updated: 2026-11-23_
 
 ## Current phase
 
-**Phase 07 — India payroll: implemented and verified locally. Awaiting owner approval.**
-Phase 08 has **not** been started. Phase 07 changes are **not committed yet**.
+**Phase 08 — Expenses, assets & travel: implemented and verified locally. Awaiting owner
+approval.** Phase 09 has **not** been started. Phase 08 changes are **not committed yet**.
 
-- Phases 01–05: approved and pushed. Phase 06: verified and pushed (`70f9e5c`); its CI result was
-  not checked from this machine (no `gh` CLI).
-- Owner decision (2026-11-23): statutory rules are configured by the organization, with a source
-  reference; **none are seeded** ([ADR-014](docs/architecture/ADR-014-india-payroll.md)).
+- Phases 01–06: approved and pushed. Phase 07: approved and pushed (`d454f0e`); CI not checked from
+  this machine (no `gh` CLI).
 
-**Current task:** none. Waiting for the owner to review Phase 07 and to say whether to commit and
+**Current task:** none. Waiting for the owner to review Phase 08 and to say whether to commit and
 push.
 
-## Phase 07 verification (2026-11-23)
+## Phase 08 verification (2026-11-23)
 
-| Check                                                    | Result                                                                                                                                                                                     |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pnpm turbo run typecheck lint test build` (11 packages) | ✅ 37/37 tasks (`--force --concurrency=2`)                                                                                                                                                 |
-| `pnpm format:check`                                      | ✅ clean                                                                                                                                                                                   |
-| Unit/component tests                                     | ✅ API 81 · shared-types 3 · validation 68 · api-client 12 · design-tokens 38 · business-rules 73 · ui-web 12 · web 49 · mobile 8 (jest)                                                   |
-| Integration tests (real Postgres/Redis/S3/Mailpit)       | ✅ 107 passed (97 earlier phases + 10 Phase 07)                                                                                                                                            |
-| Migrations                                               | ✅ 9 applied to dev and test; drift check reports no difference                                                                                                                            |
-| Playwright E2E (production build + live API)             | ✅ 11 passed, 9 skipped by design. New: components → structure → sourced EPF rule → salary and profile → run calculated → approved by an invited finance user → finalized with a bank file |
-| GitHub Actions                                           | ⏳ runs when Phase 07 is pushed                                                                                                                                                            |
+| Check                                                    | Result                                                                                                                                                                        |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm turbo run typecheck lint test build` (11 packages) | ✅ 37/37 tasks (`--force --concurrency=2`)                                                                                                                                    |
+| `pnpm format:check`                                      | ✅ clean                                                                                                                                                                      |
+| Unit/component tests                                     | ✅ API 81 · shared-types 3 · validation 74 · api-client 12 · design-tokens 38 · business-rules 82 · ui-web 12 · web 54 · mobile 8 (jest)                                      |
+| Integration tests (real Postgres/Redis/S3/Mailpit)       | ✅ 113 passed (107 earlier + 6 Phase 08)                                                                                                                                      |
+| Migrations                                               | ✅ 10 applied to dev and test; drift check reports no difference                                                                                                              |
+| Playwright E2E (production build + live API)             | ✅ 12 passed, 10 skipped by design. New: claim → routed to finance (no manager) → invited finance user approves and marks paid → asset registered, allocated and acknowledged |
+| GitHub Actions                                           | ⏳ runs when Phase 08 is pushed                                                                                                                                               |
 
-## Phase 07 delivered
+## Phase 08 delivered
 
-- **Statutory rules as sourced configuration:**
-  - EPF, ESI, Professional Tax (per state), income tax (per regime and year) and gratuity rule
-    sets, each with an official source, effective dates and DRAFT → ACTIVE → RETIRED status;
-  - active rule sets are frozen (new versions instead) and may not overlap (database exclusion
-    constraint);
-  - type-specific forms in **Payroll → Statutory rules** with empty fields.
-- **Salary model:**
-  - components with tax / PF / ESI / PT-wage / proration flags;
-  - immutable structures: fixed amount, % of CTC, % of another component, or the balance, with
-    employer EPF/ESI optionally inside CTC;
-  - effective-dated salaries with breakdowns;
-  - per-employee payroll profiles: PF, voluntary full-wage PF, pension membership, ESI, PT state,
-    metro, TDS.
-- **Calculation engine** (`@hrm/business-rules`, Decimal only):
-  - proration by calendar, fixed or working days;
-  - loss of pay from attendance (unpaid leave, optionally absences);
-  - mid-month revisions split into salary segments;
-  - EPF with ceilings, ESI with contribution-period coverage, PT slabs by gender and month;
-  - income tax: slabs, age bands, rebate with marginal relief, surcharge with marginal relief,
-    cess, section caps, HRA exemption, PF and PT deductions;
-  - year-to-date projection and monthly TDS;
-  - arrears for back-dated revisions, by month;
-  - an explanation trace for tax.
-- **Runs:**
-  - per company and month;
-  - calculation stores each employee's input snapshot and any problems; missing rules or
-    salaries block approval;
-  - one-time adjustments;
-  - approval by someone other than the calculator;
-  - finalize in month order, after which the data is immutable at the database level;
-  - an audited generic bank CSV.
-- **Payslips:** **My payslips** with a printable payslip (tax projection and trace); HR can view
-  any finalized payslip.
-- **Self-service:** **My salary & tax** shows the salary breakdown, the regime choice and the
-  declarations per financial year.
-- **Full & final settlement:**
-  - final month's salary, unless a finalized run already paid it;
-  - leave encashment on chosen components;
-  - notice pay or recovery;
-  - gratuity from the gratuity rule (eligibility, part-year rounding, cap);
-  - extra adjustments;
-  - approved by a second person, then finalized;
-  - such employees are excluded from later runs.
+- **Expense claims:**
+  - Categories carry the organization's own limits (per item, month or day), receipt threshold and
+    payroll taxability. None are pre-filled.
+  - Multi-item claims in any currency, with an entered exchange rate and receipts in S3.
+  - Live policy check. Missing receipts, future or stale dates and inactive categories block
+    submission; over-limit items need a justification.
+  - Routing: the reporting manager approves first; without a manager, the claim goes straight to
+    finance.
+  - Finance verifies the amount per item (lower with a reason) and chooses payroll or outside
+    payroll.
+  - Every step is in an append-only history. Submitted items are frozen in the database.
+- **Reimbursement:**
+  - Payroll payouts become one-time lines in the next run, taxable or not by category. They are
+    marked reimbursed when the run is finalized.
+  - External payouts are marked paid with a reference.
+- **Travel:**
+  - Requests with itinerary legs, approved by the manager (or HR when there is no manager), never
+    by the traveller.
+  - The travel desk records bookings and advances.
+  - Trip claims link to the trip, and the settlement nets approved claims against advances. Only
+    the balance is paid or recovered, through payroll or outside it.
+- **Assets:**
+  - A register with categories, serials, purchase details, warranty and an informational
+    straight-line book value.
+  - Allocation (one holder at a time), employee acknowledgement in **My assets**, return with
+    condition, status changes, maintenance and an append-only history.
+- **Software licences:** seat counts that assignments can never exceed.
+- **Offboarding:** the full & final settlement now flags unreturned assets, assigned licence seats,
+  undecided claims and unpaid approved claims.
 
-## Assumptions (recorded in ADR-014; the owner may override)
+## Assumptions (recorded in ADR-015; the owner may override)
 
-1. No statutory values are seeded; payroll needs the applicable rule sets configured and
-   activated.
-2. Monthly runs per company; no off-cycle runs except F&F.
-3. Generic bank CSV; bank-specific formats are later integrations.
-4. No statutory returns or challans (ECR, ESI returns, 24Q, Form 16) and no LWF in this phase.
-5. The default tax regime is an organization setting (may be empty → a problem on the result).
-6. Age bands use age on 31 March of the financial year.
-7. Gratuity and leave-encashment taxability are chosen when preparing a settlement; exemption
-   limits are not computed.
-8. A mid-month company transfer is paid by the company of the last day in the month.
-9. Payslips are printable pages; generated PDFs come with Phase 10 documents.
+1. OCR of bills is deferred to Phase 11; amounts are entered by hand.
+2. Approval is fixed at two levels (manager → finance) until the Phase 10 workflow engine.
+3. Exchange rates are entered manually; there is no rate feed (Phase 14).
+4. Bookings are recorded, not made; there is no booking-engine integration.
+5. Depreciation is informational only, not an accounting ledger.
+6. Expense, travel and asset permissions are organization-wide; manager approval is by reporting
+   line.
 
-## Issues found and fixed during Phase 07
+## Issues found and fixed during Phase 08
 
-1. The rule-set exclusion constraint used `regime::text`, which is not immutable, so the migration
-   failed on apply and was rolled back cleanly. It now uses `COALESCE(regime, 'OLD')`; this is
-   safe because the regime is null only for non-tax types.
-2. The default-tax-regime setting was added to the uncommitted migration. The dev database was
-   altered to match and its checksum updated, so there is still one migration for the phase and
-   no drift.
-3. Arrears were first merged per component across months; now each (component, month)
-   difference is its own line with `for_year`/`for_month`.
-4. The bank file and payslip initially used the company's first legal entity. The payslip now
-   uses the legal entity of the employee's job record at the end of the period.
-5. Stopping a background `pnpm start` / `pnpm preview` left the node process on :3100 / :4173, so
-   E2E first ran against the old build. The processes were stopped by port, and the fix is noted
-   in `docs/TESTING_GUIDE.md`.
+1. **Partial asset updates would have cleared fields.** The nullable date and money schemas
+   turned an omitted field into `null`, so a PATCH of an asset's name would have wiped its
+   purchase date, cost and warranty. Fixed with outer `.optional()`, with a regression test. The
+   same check found the licence update schema had the issue too, and it is fixed as well.
+2. **Trip claims could have been paid twice.** Claims of a trip with an advance would have been
+   reimbursed on their own _and_ through the trip settlement. They are now held for the
+   settlement, and claims already carried by a payroll run are excluded from it.
+3. Submitting a claim recorded the answered warnings without the month-to-date context. It now
+   reuses the full policy check.
+4. A conditional `usePermission` call in the travel page broke the rules of hooks; fixed.
+5. E2E: a first run hit your dev API while `--watch` was restarting it after a rebuild ("Unable to
+   reach the server"). The rerun passed. Two locators were too broad and one test label was wrong
+   ("Laptops (LAPTOP)"); fixed.
 
 ## Known issues and risks
 
 1. **Payroll calculations must be validated by a qualified payroll professional before production
-   use** (master rules). The engine is tested with fictional values only.
-2. Runs are calculated synchronously in one transaction (5-minute limit). Very large
+   use** (master rules). The engines are tested with fictional values only.
+2. Payroll runs are calculated synchronously in one transaction (5-minute limit); very large
    organizations will need batched background calculation (BullMQ).
-3. Arrears for a past month whose revision also started mid-month are approximated (salary at
-   month end × stored payable days).
-4. Local Node is 22.13.1 (22.22+ or 24 LTS recommended); MinIO was replaced by RustFS.
-5. Self-registered owners have no e-mail verification; there are no passkeys.
-6. Reference pickers load at most 200 options.
-7. Uploaded documents are not malware-scanned yet (Phase 10/14).
-8. Mobile has no payroll, recruitment or onboarding screens yet (Phase 13).
+3. Arrears for a past month whose revision also started mid-month are approximated.
+4. Receipts and documents are not malware-scanned yet (Phase 10/14).
+5. Local Node is 22.13.1 (22.22+ or 24 LTS recommended); MinIO was replaced by RustFS.
+6. Self-registered owners have no e-mail verification; there are no passkeys.
+7. Reference pickers load at most 200 options.
+8. Mobile has no payroll, recruitment, onboarding, expense or asset screens yet (Phase 13).
 9. **Local machine:** with little free memory, the gate needs `--concurrency=2` and E2E needs
-   `--workers=1` with a pre-started preview. See `docs/TESTING_GUIDE.md`.
+   `--workers=1` with a pre-started preview. Stopping a background `pnpm start` / `pnpm preview`
+   can leave node holding the port. See `docs/TESTING_GUIDE.md`.
 
 ## Database migration status
 
@@ -132,16 +112,17 @@ push.
 | 20261119000000_time_attendance_leave              | ✅  | ✅   |
 | 20261120000000_recruitment_onboarding             | ✅  | ✅   |
 | 20261123000000_india_payroll                      | ✅  | ✅   |
+| 20261124000000_expenses_travel_assets             | ✅  | ✅   |
 
 ## Next recommended task
 
-1. Owner reviews Phase 07 (run `pnpm dev`):
-   - **Payroll → Salary setup**: add components and a structure;
-   - **Statutory rules**: enter and activate the rule sets that apply, from their official
-     sources;
-   - **Employee payroll**: set a salary and profile;
-   - **Payroll runs**: create, calculate, approve with a second user, finalize;
-   - check **My payslips** and **Full & final**.
+1. Owner reviews Phase 08 (`pnpm dev` is running):
+   - **Expense setup**: add categories and limits;
+   - **My expenses**: claim with receipts and submit;
+   - **Expense approvals**: approve as the manager, then as finance;
+   - **My travel / Travel requests**: request, approve, record an advance and settle;
+   - **Assets**: register, allocate, then confirm in **My assets**;
+   - **Software licences**: add one and assign its seats.
 2. Confirm or override the assumptions above.
-3. On approval: commit and push Phase 07, then confirm CI is green.
-4. Then Phase 08: expenses, assets and travel.
+3. On approval: commit and push Phase 08, then confirm CI is green.
+4. Then Phase 09: performance, learning and engagement.

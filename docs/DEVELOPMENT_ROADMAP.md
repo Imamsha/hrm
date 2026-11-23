@@ -11,8 +11,8 @@ approval before the next phase starts.
 | 04    | Employee management: directory, profile, personal/employment info, documents, skills, education, experience, history, transfer, promotion, probation, confirmation, lifecycle                                                                             | ✅ Done — approved 2026-11-19, CI green                     |
 | 05    | Attendance, shifts & leave: clock-in/out, biometric, QR, shifts, rostering, overtime, leave policies/applications/balances, approvals, attendance analytics                                                                                               | 🟡 Implemented & verified locally — awaiting owner approval |
 | 06    | Recruitment & onboarding: requisitions, openings, career portal, candidates, resume parsing, interviews, assessments, offers, onboarding, joining docs, induction                                                                                         | ✅ pushed `70f9e5c`                                         |
-| 07    | India payroll: structures, earnings, deductions, EPF, ESI, PT, TDS, regimes, runs, payslips, arrears, approvals, bank files, F&F                                                                                                                          | 🟡 verified locally                                         |
-| 08    | Expenses, assets & travel: claims, reimbursements, OCR, asset allocation/return, travel requests/approvals/settlements                                                                                                                                    | ⏳                                                          |
+| 07    | India payroll: structures, earnings, deductions, EPF, ESI, PT, TDS, regimes, runs, payslips, arrears, approvals, bank files, F&F                                                                                                                          | ✅ pushed `d454f0e`                                         |
+| 08    | Expenses, assets & travel: claims, reimbursements, OCR, asset allocation/return, travel requests/approvals/settlements                                                                                                                                    | 🟡 verified locally                                         |
 | 09    | Performance & learning: cycles, OKRs, goals, KPIs, feedback, 360, training, learning paths, certifications, engagement                                                                                                                                    | ⏳                                                          |
 | 10    | Documents, helpdesk & workflows: document management, templates, e-signature integration, ticketing, SLA, knowledge base, workflow engine, approval designer, escalation, delegation                                                                      | ⏳                                                          |
 | 11    | Advanced AI platform: HR assistant, recruitment AI, document intelligence, OCR, embeddings, RAG, agents, workforce insights, automation, cost monitoring, AI security, evaluation                                                                         | ⏳                                                          |
@@ -76,3 +76,11 @@ approval before the next phase starts.
 - Investment proof verification workflow and declaration lock dates (Phase 10 workflows).
 - Off-cycle runs (bonus, correction) and payroll variance analytics (Phase 12).
 - Batched/background calculation for very large runs (BullMQ), and mobile payslips (Phase 13).
+
+## Carried forward from Phase 08
+
+- OCR and data extraction from receipts and bills (Phase 11 document intelligence).
+- Configurable multi-level approval chains and delegation (Phase 10 workflow engine).
+- Exchange-rate feeds, corporate cards, booking engines and accounting exports (Phase 14).
+- Expense, travel and asset analytics (Phase 12); mobile claim capture with camera (Phase 13).
+- Asset audits / physical verification cycles and QR asset labels.

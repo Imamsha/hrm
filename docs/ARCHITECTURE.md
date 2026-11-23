@@ -232,7 +232,19 @@ See ADR-012.
   finalize; finalized data is immutable at the database level. Payslips, the bank CSV and the
   full & final settlement read finalized data.
 
-## 17. ADR index
+## 17. Expenses, travel and assets (Phase 08)
+
+- `modules/expenses` (expenses, travel and assets services); pure rules in
+  `@hrm/business-rules/expenses` (policy checks with blocking errors vs justified warnings,
+  currency conversion, travel settlement, straight-line book value).
+- Claims move claimant → reporting manager → finance with an append-only history; the database
+  freezes submitted items and finished claims. Receipts live in S3 under the tenant prefix.
+- Trips with advances settle net of their claims. Reimbursements and trip balances flow into
+  payroll as one-time lines (`payroll-links.ts`) and complete when the run is finalized.
+- Assets and licence seats are allocated under row locks with partial unique indexes; the full
+  & final settlement reports anything still with a leaver.
+
+## 18. ADR index
 
 | ADR                                                                     | Title                                                            |
 | ----------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -250,3 +262,4 @@ See ADR-012.
 | [012](architecture/ADR-012-time-attendance-leave.md)                    | Shifts, attendance and leave                                     |
 | [013](architecture/ADR-013-recruitment-and-onboarding.md)               | Recruitment (ATS), career portal and onboarding                  |
 | [014](architecture/ADR-014-india-payroll.md)                            | India payroll: sourced statutory rules, runs, payslips, F&F      |
+| [015](architecture/ADR-015-expenses-assets-travel.md)                   | Expenses, travel and assets                                      |

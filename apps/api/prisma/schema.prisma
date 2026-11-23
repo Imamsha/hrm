@@ -90,6 +90,11 @@ model Organization {
   salaryComponents    SalaryComponent[]
   salaryStructures    SalaryStructure[]
   payrollRuns         PayrollRun[]
+  expenseSettings     ExpenseSettings?
+  expenseCategories   ExpenseCategory[]
+  assetCategories     AssetCategory[]
+  assets              Asset[]
+  softwareLicenses    SoftwareLicense[]
   employees           Employee[]
   employmentRecords   EmploymentRecord[]
 
@@ -543,6 +548,7 @@ model Location {
   organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   branches      Branch[]
   legalEntities LegalEntity[]
+  assets        Asset[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, id])
@@ -982,6 +988,10 @@ model Employee {
   payrollAdjustments PayrollAdjustment[]
   payrollResults     PayrollResult[]
   settlements        PayrollSettlement[]
+  expenseClaims      ExpenseClaim[]             @relation("ExpenseClaims")
+  travelRequests     TravelRequest[]            @relation("TravelRequests")
+  assetAllocations   AssetAllocation[]          @relation("AssetAllocations")
+  licenseSeats       LicenseAssignment[]        @relation("LicenseSeats")
 
   @@unique([organizationId, employeeNumber])
   @@unique([organizationId, id])
@@ -2328,4 +2338,396 @@ model PayrollSettlement {
   @@unique([organizationId, id])
   @@index([organizationId, status])
   @@map("payroll_settlements")
+}
+
+// =============================================================================================
+// Phase 08 — Expenses, travel and assets (ADR-015). Limits are organization policy; none seeded.
+// =============================================================================================
+
+enum PayoutMethod {
+  PAYROLL
+  EXTERNAL
+}
+
+enum ExpenseClaimStatus {
+  DRAFT
+  SUBMITTED
+  MANAGER_APPROVED
+  FINANCE_APPROVED
+  REIMBURSED
+  REJECTED
+  CANCELLED
+}
+
+enum TravelStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CANCELLED
+  SETTLED
+}
+
+enum TravelBookingType {
+  FLIGHT
+  TRAIN
+  BUS
+  CAB
+  HOTEL
+  OTHER
+}
+
+enum AssetStatus {
+  IN_STOCK
+  ALLOCATED
+  IN_REPAIR
+  RETIRED
+  LOST
+}
+
+enum AssetCondition {
+  GOOD
+  DAMAGED
+  LOST
+}
+
+model ExpenseSettings {
+  organizationId      String       @id @map("organization_id") @db.Uuid
+  claimWindowDays     Int?         @map("claim_window_days") @db.SmallInt
+  defaultPayoutMethod PayoutMethod @default(PAYROLL) @map("default_payout_method")
+  updatedAt           DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@map("expense_settings")
+}
+
+model ExpenseCategory {
+  id                   String       @id @default(uuid(7)) @db.Uuid
+  organizationId       String       @map("organization_id") @db.Uuid
+  code                 String       @db.VarChar(30)
+  name                 String       @db.VarChar(100)
+  description          String?      @db.VarChar(500)
+  maxPerItem           Decimal?     @map("max_per_item") @db.Decimal(14, 2)
+  maxPerMonth          Decimal?     @map("max_per_month") @db.Decimal(14, 2)
+  receiptRequiredAbove Decimal?     @map("receipt_required_above") @db.Decimal(14, 2)
+  dailyLimit           Decimal?     @map("daily_limit") @db.Decimal(14, 2)
+  taxable              Boolean      @default(false)
+  status               RecordStatus @default(ACTIVE)
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  items        ExpenseItem[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@map("expense_categories")
+}
+
+model ExpenseClaim {
+  id                     String             @id @default(uuid(7)) @db.Uuid
+  organizationId         String             @map("organization_id") @db.Uuid
+  employeeId             String             @map("employee_id") @db.Uuid
+  title                  String             @db.VarChar(200)
+  tripId                 String?            @map("trip_id") @db.Uuid
+  status                 ExpenseClaimStatus @default(DRAFT)
+  totalClaimed           Decimal            @default(0) @map("total_claimed") @db.Decimal(14, 2)
+  totalApproved          Decimal?           @map("total_approved") @db.Decimal(14, 2)
+  /// Routing: the reporting manager at submission (null = HR verifies directly).
+  approverEmployeeId     String?            @map("approver_employee_id") @db.Uuid
+  payoutMethod           PayoutMethod?      @map("payout_method")
+  submittedAt            DateTime?          @map("submitted_at") @db.Timestamptz(6)
+  managerDecidedByUserId String?            @map("manager_decided_by_user_id") @db.Uuid
+  managerDecidedAt       DateTime?          @map("manager_decided_at") @db.Timestamptz(6)
+  financeDecidedByUserId String?            @map("finance_decided_by_user_id") @db.Uuid
+  financeDecidedAt       DateTime?          @map("finance_decided_at") @db.Timestamptz(6)
+  decisionNote           String?            @map("decision_note") @db.VarChar(1000)
+  /// Payroll run carrying the reimbursement (PAYROLL payout).
+  payrollRunId           String?            @map("payroll_run_id") @db.Uuid
+  paidOn                 DateTime?          @map("paid_on") @db.Date
+  paidReference          String?            @map("paid_reference") @db.VarChar(100)
+  reimbursedAt           DateTime?          @map("reimbursed_at") @db.Timestamptz(6)
+  createdAt              DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee            @relation("ExpenseClaims", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+  trip     TravelRequest?      @relation(fields: [tripId], references: [id], onDelete: Restrict)
+  items    ExpenseItem[]
+  events   ExpenseClaimEvent[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, employeeId, status])
+  @@index([organizationId, status])
+  @@index([organizationId, approverEmployeeId, status])
+  @@map("expense_claims")
+}
+
+model ExpenseItem {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  organizationId     String   @map("organization_id") @db.Uuid
+  claimId            String   @map("claim_id") @db.Uuid
+  categoryId         String   @map("category_id") @db.Uuid
+  date               DateTime @db.Date
+  days               Int      @default(1) @db.SmallInt
+  description        String   @db.VarChar(300)
+  merchant           String?  @db.VarChar(200)
+  currency           String   @db.Char(3)
+  originalAmount     Decimal  @map("original_amount") @db.Decimal(14, 2)
+  exchangeRate       Decimal  @map("exchange_rate") @db.Decimal(14, 6)
+  /// In the organization's currency (original × rate).
+  amount             Decimal  @db.Decimal(14, 2)
+  approvedAmount     Decimal? @map("approved_amount") @db.Decimal(14, 2)
+  financeNote        String?  @map("finance_note") @db.VarChar(500)
+  justification      String?  @db.VarChar(1000)
+  /// Policy warnings at submission (kept for approvers).
+  issues             Json     @default("[]")
+  receiptStorageKey  String?  @unique @map("receipt_storage_key") @db.VarChar(500)
+  receiptFileName    String?  @map("receipt_file_name") @db.VarChar(255)
+  receiptContentType String?  @map("receipt_content_type") @db.VarChar(100)
+  receiptSizeBytes   Int?     @map("receipt_size_bytes")
+  sortOrder          Int      @default(0) @map("sort_order") @db.SmallInt
+
+  claim    ExpenseClaim    @relation(fields: [organizationId, claimId], references: [organizationId, id], onDelete: Cascade)
+  category ExpenseCategory @relation(fields: [organizationId, categoryId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, claimId])
+  @@index([organizationId, categoryId, date])
+  @@map("expense_items")
+}
+
+model ExpenseClaimEvent {
+  id             String              @id @default(uuid(7)) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  claimId        String              @map("claim_id") @db.Uuid
+  fromStatus     ExpenseClaimStatus? @map("from_status")
+  toStatus       ExpenseClaimStatus  @map("to_status")
+  note           String?             @db.VarChar(1000)
+  actorUserId    String?             @map("actor_user_id") @db.Uuid
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  claim ExpenseClaim @relation(fields: [organizationId, claimId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, claimId, createdAt])
+  @@map("expense_claim_events")
+}
+
+model TravelRequest {
+  id                   String        @id @default(uuid(7)) @db.Uuid
+  organizationId       String        @map("organization_id") @db.Uuid
+  employeeId           String        @map("employee_id") @db.Uuid
+  purpose              String        @db.VarChar(300)
+  startDate            DateTime      @map("start_date") @db.Date
+  endDate              DateTime      @map("end_date") @db.Date
+  legs                 Json
+  estimatedCost        Decimal?      @map("estimated_cost") @db.Decimal(14, 2)
+  advanceRequested     Decimal?      @map("advance_requested") @db.Decimal(14, 2)
+  notes                String?       @db.VarChar(2000)
+  status               TravelStatus  @default(SUBMITTED)
+  approverEmployeeId   String?       @map("approver_employee_id") @db.Uuid
+  decidedByUserId      String?       @map("decided_by_user_id") @db.Uuid
+  decidedAt            DateTime?     @map("decided_at") @db.Timestamptz(6)
+  decisionNote         String?       @map("decision_note") @db.VarChar(1000)
+  settlementBalance    Decimal?      @map("settlement_balance") @db.Decimal(14, 2)
+  /// PAYROLL = recovered by a payroll deduction; REPAID = repaid by the traveller.
+  recoveryMethod       PayoutMethod? @map("recovery_method")
+  recoveryReference    String?       @map("recovery_reference") @db.VarChar(100)
+  recoveryPayrollRunId String?       @map("recovery_payroll_run_id") @db.Uuid
+  recoveredAt          DateTime?     @map("recovered_at") @db.Timestamptz(6)
+  settledAt            DateTime?     @map("settled_at") @db.Timestamptz(6)
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee        @relation("TravelRequests", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+  bookings TravelBooking[]
+  advances TravelAdvance[]
+  claims   ExpenseClaim[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, employeeId, startDate])
+  @@index([organizationId, status])
+  @@map("travel_requests")
+}
+
+model TravelBooking {
+  id              String            @id @default(uuid(7)) @db.Uuid
+  organizationId  String            @map("organization_id") @db.Uuid
+  tripId          String            @map("trip_id") @db.Uuid
+  type            TravelBookingType
+  vendor          String            @db.VarChar(200)
+  reference       String?           @db.VarChar(100)
+  bookedOn        DateTime          @map("booked_on") @db.Date
+  amount          Decimal           @db.Decimal(14, 2)
+  paidByCompany   Boolean           @default(true) @map("paid_by_company")
+  notes           String?           @db.VarChar(1000)
+  createdByUserId String?           @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  trip TravelRequest @relation(fields: [organizationId, tripId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, tripId])
+  @@map("travel_bookings")
+}
+
+model TravelAdvance {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  tripId          String   @map("trip_id") @db.Uuid
+  amount          Decimal  @db.Decimal(14, 2)
+  paidOn          DateTime @map("paid_on") @db.Date
+  reference       String   @db.VarChar(100)
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  trip TravelRequest @relation(fields: [organizationId, tripId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, tripId])
+  @@map("travel_advances")
+}
+
+model AssetCategory {
+  id               String       @id @default(uuid(7)) @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  code             String       @db.VarChar(30)
+  name             String       @db.VarChar(100)
+  usefulLifeMonths Int?         @map("useful_life_months") @db.SmallInt
+  salvagePercent   Decimal?     @map("salvage_percent") @db.Decimal(5, 2)
+  status           RecordStatus @default(ACTIVE)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assets       Asset[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@map("asset_categories")
+}
+
+model Asset {
+  id             String      @id @default(uuid(7)) @db.Uuid
+  organizationId String      @map("organization_id") @db.Uuid
+  tag            String      @db.VarChar(30)
+  name           String      @db.VarChar(200)
+  categoryId     String      @map("category_id") @db.Uuid
+  serialNumber   String?     @map("serial_number") @db.VarChar(100)
+  manufacturer   String?     @db.VarChar(100)
+  model          String?     @db.VarChar(100)
+  vendor         String?     @db.VarChar(200)
+  purchaseDate   DateTime?   @map("purchase_date") @db.Date
+  purchaseCost   Decimal?    @map("purchase_cost") @db.Decimal(14, 2)
+  warrantyEnd    DateTime?   @map("warranty_end") @db.Date
+  locationId     String?     @map("location_id") @db.Uuid
+  status         AssetStatus @default(IN_STOCK)
+  notes          String?     @db.VarChar(2000)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  category     AssetCategory      @relation(fields: [organizationId, categoryId], references: [organizationId, id], onDelete: Restrict)
+  location     Location?          @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  allocations  AssetAllocation[]
+  events       AssetEvent[]
+  maintenance  AssetMaintenance[]
+
+  @@unique([organizationId, tag])
+  @@unique([organizationId, id])
+  @@index([organizationId, status])
+  @@map("assets")
+}
+
+model AssetAllocation {
+  id                String          @id @default(uuid(7)) @db.Uuid
+  organizationId    String          @map("organization_id") @db.Uuid
+  assetId           String          @map("asset_id") @db.Uuid
+  employeeId        String          @map("employee_id") @db.Uuid
+  allocatedOn       DateTime        @map("allocated_on") @db.Date
+  expectedReturnOn  DateTime?       @map("expected_return_on") @db.Date
+  conditionNote     String?         @map("condition_note") @db.VarChar(500)
+  acknowledgedAt    DateTime?       @map("acknowledged_at") @db.Timestamptz(6)
+  returnedOn        DateTime?       @map("returned_on") @db.Date
+  returnCondition   AssetCondition? @map("return_condition")
+  returnNote        String?         @map("return_note") @db.VarChar(500)
+  allocatedByUserId String?         @map("allocated_by_user_id") @db.Uuid
+  returnedByUserId  String?         @map("returned_by_user_id") @db.Uuid
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  asset    Asset    @relation(fields: [organizationId, assetId], references: [organizationId, id], onDelete: Restrict)
+  employee Employee @relation("AssetAllocations", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, assetId, allocatedOn])
+  @@index([organizationId, employeeId])
+  @@map("asset_allocations")
+}
+
+model AssetEvent {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  assetId        String   @map("asset_id") @db.Uuid
+  type           String   @db.VarChar(30)
+  employeeId     String?  @map("employee_id") @db.Uuid
+  note           String?  @db.VarChar(1000)
+  actorUserId    String?  @map("actor_user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  asset Asset @relation(fields: [organizationId, assetId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, assetId, createdAt])
+  @@map("asset_events")
+}
+
+model AssetMaintenance {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  assetId         String    @map("asset_id") @db.Uuid
+  startedOn       DateTime  @map("started_on") @db.Date
+  completedOn     DateTime? @map("completed_on") @db.Date
+  vendor          String?   @db.VarChar(200)
+  cost            Decimal?  @db.Decimal(14, 2)
+  description     String    @db.VarChar(1000)
+  createdByUserId String?   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  asset Asset @relation(fields: [organizationId, assetId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, assetId, startedOn])
+  @@map("asset_maintenance")
+}
+
+model SoftwareLicense {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String       @db.VarChar(200)
+  vendor         String?      @db.VarChar(200)
+  seats          Int
+  expiresOn      DateTime?    @map("expires_on") @db.Date
+  cost           Decimal?     @db.Decimal(14, 2)
+  notes          String?      @db.VarChar(2000)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignments  LicenseAssignment[]
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, id])
+  @@map("software_licenses")
+}
+
+model LicenseAssignment {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  organizationId   String    @map("organization_id") @db.Uuid
+  licenseId        String    @map("license_id") @db.Uuid
+  employeeId       String    @map("employee_id") @db.Uuid
+  assignedOn       DateTime  @default(now()) @map("assigned_on") @db.Timestamptz(6)
+  revokedOn        DateTime? @map("revoked_on") @db.Timestamptz(6)
+  assignedByUserId String?   @map("assigned_by_user_id") @db.Uuid
+  revokedByUserId  String?   @map("revoked_by_user_id") @db.Uuid
+
+  license  SoftwareLicense @relation(fields: [organizationId, licenseId], references: [organizationId, id], onDelete: Restrict)
+  employee Employee        @relation("LicenseSeats", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, licenseId])
+  @@index([organizationId, employeeId])
+  @@map("license_assignments")
 }

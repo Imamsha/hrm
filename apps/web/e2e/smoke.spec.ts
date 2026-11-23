@@ -492,3 +492,106 @@ test('run payroll from configured rules to a finalized payslip', async ({
   await expect(page.getByText('finalized', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /Bank file/ })).toBeVisible();
 });
+
+test('claim an expense, have finance verify and pay it, and receive an asset', async ({
+  page,
+  browser,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'Covered on desktop');
+  test.setTimeout(150_000);
+  await registerViaUi(page);
+
+  await page.goto('/organization/structure?tab=companies');
+  await page.getByRole('button', { name: /New company/ }).click();
+  let dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Code/).fill('SPD');
+  await dialog.getByLabel(/^Name/).fill('Spend Co');
+  await dialog.getByRole('button', { name: 'Create company' }).click();
+  await expect(dialog).toBeHidden();
+
+  // The owner becomes an employee linked to their own login (no reporting manager).
+  await page.goto('/people/employees');
+  await page.getByRole('button', { name: /Add employee/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^First name/).fill('Esha');
+  await dialog.getByLabel(/^Date of joining/).fill('2025-01-06');
+  await dialog.getByLabel(/^Company/).selectOption({ label: 'Spend Co (SPD)' });
+  await dialog.getByLabel(/^Employment type/).selectOption('FULL_TIME');
+  await dialog.getByRole('button', { name: 'Add employee' }).click();
+  await expect(page.getByRole('heading', { name: /Esha/ })).toBeVisible();
+  await page.getByRole('button', { name: /Actions/ }).click();
+  await page.getByRole('menuitem', { name: 'Link login account' }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Member').selectOption({ index: 2 });
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.goto('/expenses/setup');
+  await page.getByRole('button', { name: /New category/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Code/).fill('TAXI');
+  await dialog.getByLabel(/^Name/).fill('Local travel');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toBeHidden();
+
+  const today = new Date().toISOString().slice(0, 10);
+  await page.goto('/expenses/claims/new');
+  await page.getByLabel(/^Title/).fill('Client meeting');
+  const item = page.getByRole('group', { name: 'Item 1' });
+  await item.getByLabel(/^Category/).selectOption({ label: 'Local travel' });
+  await item.getByLabel(/^Date/).fill(today);
+  await item.getByLabel(/^Amount/).fill('450');
+  await item.getByLabel(/^Description/).fill('Taxi to client office');
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  await expect(page.getByRole('heading', { name: 'Client meeting' })).toBeVisible();
+  await page.getByRole('button', { name: 'Submit' }).click();
+  // No reporting manager: straight to finance.
+  await expect(page.getByText('With finance', { exact: true }).first()).toBeVisible();
+  const claimUrl = page.url();
+
+  const finance = await invitedPage(page, browser, /Finance/, 'Farah Finance');
+  await finance.page.goto(claimUrl);
+  await finance.page.getByLabel('Pay').selectOption('EXTERNAL');
+  await finance.page.getByRole('button', { name: 'Approve' }).click();
+  await expect(finance.page.getByText('Approved', { exact: true }).first()).toBeVisible();
+  await finance.page.getByRole('button', { name: 'Mark paid' }).click();
+  dialog = finance.page.getByRole('dialog');
+  await dialog.getByLabel(/^Payment reference/).fill('NEFT-123');
+  await dialog.getByRole('button', { name: 'Mark paid' }).click();
+  await expect(finance.page.getByText('Reimbursed', { exact: true }).first()).toBeVisible();
+  await finance.context.close();
+
+  await page.goto('/me/expenses');
+  await expect(
+    page.getByRole('table', { name: 'My expense claims' }).getByText('Reimbursed'),
+  ).toBeVisible();
+
+  // Assets: register, allocate to the owner, who confirms receipt.
+  await page.goto('/assets');
+  await page.getByRole('button', { name: /Category/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Code/).fill('LAPTOP');
+  await dialog.getByLabel(/^Name/).fill('Laptops');
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole('button', { name: /Register asset/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Asset tag/).fill('LAP-001');
+  await dialog.getByLabel(/^Name/).fill('Laptop 14 inch');
+  await dialog.getByLabel(/^Category/).selectOption({ label: 'Laptops (LAPTOP)' });
+  await dialog.getByRole('button', { name: 'Register' }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole('table', { name: 'Assets' }).getByRole('link', { name: 'LAP-001' }).click();
+  await page.getByRole('button', { name: 'Allocate' }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Employee/).selectOption({ index: 1 });
+  await dialog.getByRole('button', { name: 'Allocate' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('Now with Esha')).toBeVisible();
+
+  await page.goto('/me/assets');
+  const equipment = page.getByRole('list', { name: 'My equipment' });
+  await equipment.getByRole('button', { name: 'Confirm receipt' }).click();
+  await expect(equipment.getByText('received')).toBeVisible();
+});

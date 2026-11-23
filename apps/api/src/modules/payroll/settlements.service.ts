@@ -223,6 +223,36 @@ export class SettlementsService {
     if (!e) throw AppException.notFound('Employee');
     const problems: { code: string; message: string }[] = [];
 
+    // Offboarding checks (Phase 08): property and money still open with the employee.
+    const [openAssets, openSeats, undecided, unpaid] = await Promise.all([
+      tx.assetAllocation.count({ where: { employeeId: s.employeeId, returnedOn: null } }),
+      tx.licenseAssignment.count({ where: { employeeId: s.employeeId, revokedOn: null } }),
+      tx.expenseClaim.count({
+        where: { employeeId: s.employeeId, status: { in: ['SUBMITTED', 'MANAGER_APPROVED'] } },
+      }),
+      tx.expenseClaim.count({ where: { employeeId: s.employeeId, status: 'FINANCE_APPROVED' } }),
+    ]);
+    if (openAssets)
+      problems.push({
+        code: 'ASSETS_NOT_RETURNED',
+        message: `${String(openAssets)} asset(s) are still allocated to the employee`,
+      });
+    if (openSeats)
+      problems.push({
+        code: 'LICENSES_ASSIGNED',
+        message: `${String(openSeats)} software licence seat(s) are still assigned`,
+      });
+    if (undecided)
+      problems.push({
+        code: 'CLAIMS_PENDING',
+        message: `${String(undecided)} expense claim(s) still await a decision`,
+      });
+    if (unpaid)
+      problems.push({
+        code: 'REIMBURSEMENT_PENDING',
+        message: `${String(unpaid)} approved expense claim(s) are not yet reimbursed; pay them outside payroll first`,
+      });
+
     // Salary on the last working day: basis of encashment, notice pay and gratuity.
     const salaries = (await salariesUpTo(tx, [s.employeeId], lwd)).get(s.employeeId) ?? [];
     const salary = salaryOn(salaries, lwd);

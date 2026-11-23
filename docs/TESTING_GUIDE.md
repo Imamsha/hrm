@@ -35,6 +35,22 @@ Integration tests use an isolated database (`hrm_test`), Redis DB 1 and bucket `
 (`TEST_*` variables in `.env.example`). The audit log is append-only, so tests create uniquely
 named tenants instead of cleaning up.
 
+## What is covered (Phase 06)
+
+- **business-rules** (`recruitment.test.ts`): stage transitions, feedback summary, task due
+  dates, progress, slugs.
+- **validation** (`recruitment.test.ts`): decimal money and ranges (`"9"` < `"10"`), consent,
+  rejection reason, HIRED not settable by stage move, assessment bounds, feedback, templates.
+- **integration** (`recruitment.int.test.ts`, real Postgres/Redis/S3): requisition approval
+  (not your own), opening needs an approved requisition, public portal apply with resume +
+  consent and tenant isolation, pipeline + independent panel feedback, offer → atomic hire →
+  employee + onboarding plan + requisition FILLED, onboarding tasks (assignee/HR, document
+  requirement, self upload), append-only events and RLS.
+- **web** (`features/recruitment/recruitment.test.tsx`): navigation gating, public career site
+  apply (consent required), panel feedback, my onboarding.
+- **E2E**: owner raises a requisition → invited HR admin (Mailpit) approves → opening published →
+  anonymous applicant applies on the career site → candidate appears in the pipeline.
+
 ## What is covered (Phase 05)
 
 - **Integration (9, `time.int.test.ts`, dates relative to today):** shift validation, one

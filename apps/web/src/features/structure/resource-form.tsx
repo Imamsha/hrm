@@ -222,9 +222,11 @@ export function ResourceForm({
                         ? 'date'
                         : f.kind === 'time'
                           ? 'time'
-                          : f.kind === 'email'
-                            ? 'email'
-                            : 'text'
+                          : f.kind === 'datetime'
+                            ? 'datetime-local'
+                            : f.kind === 'email'
+                              ? 'email'
+                              : 'text'
                     }
                     inputMode={f.kind === 'number' ? 'numeric' : undefined}
                     placeholder={f.placeholder}

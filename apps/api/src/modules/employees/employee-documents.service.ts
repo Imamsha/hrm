@@ -121,6 +121,8 @@ export class EmployeeDocumentsService {
     employeeId: string,
     file: UploadedFileLike | undefined,
     fields: unknown,
+    /** The employee uploads their own document (onboarding tasks); HR needs document.manage. */
+    asSelf = false,
   ): Promise<EmployeeDocumentItem> {
     const meta = documentMetadataSchema.safeParse(fields);
     if (!meta.success) throw AppException.validation(toErrorDetails(meta.error));
@@ -135,7 +137,9 @@ export class EmployeeDocumentsService {
     // Authorize before touching storage.
     await this.prisma.withTenant(async (tx) => {
       const target = await loadTarget(tx, principal, employeeId);
-      authorize(principal, P.EMPLOYEES_DOCUMENT_MANAGE, target);
+      if (asSelf) {
+        if (!isSelf(principal, target)) throw AppException.notFound('Employee');
+      } else authorize(principal, P.EMPLOYEES_DOCUMENT_MANAGE, target);
     });
 
     const id = uuidv7();

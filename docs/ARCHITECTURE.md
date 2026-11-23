@@ -204,7 +204,21 @@ See ADR-011.
 
 See ADR-012.
 
-## 15. ADR index
+## 15. Recruitment and onboarding (Phase 06)
+
+- `modules/recruitment` (openings, candidates, applications services) and
+  `modules/onboarding`; pure rules (`canMoveStage`, `summarizeFeedback`, `taskDueDate`,
+  `onboardingProgress`, `openingSlug`) live in `@hrm/business-rules` and are shared with the web.
+- **Hire** reuses `EmployeesService.joinInTx` inside one transaction (employee, candidate link,
+  HIRED event, onboarding plan, requisition FILLED) — `withTenant` cannot nest, so services expose
+  `*InTx` variants.
+- **Public career site**: `/careers/:org` (web, outside `RequireAuth`) → `@Public` API →
+  `app.career_portal_tenant` (`SECURITY DEFINER`) → `withTenant` with that organization; RLS
+  still applies. Resumes go to S3 under the tenant prefix after magic-byte sniffing.
+- Panel feedback stays hidden from other panelists until each submits; stage history is
+  append-only. AI parsing is deferred to Phase 11 and will never decide (ADR-013).
+
+## 16. ADR index
 
 | ADR                                                                     | Title                                                            |
 | ----------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -220,3 +234,4 @@ See ADR-012.
 | [010](architecture/ADR-010-organization-structure-and-scoped-access.md) | Organization structure, calendars and structural ABAC scopes     |
 | [011](architecture/ADR-011-employee-management.md)                      | Employee records, effective-dated job history and sensitive data |
 | [012](architecture/ADR-012-time-attendance-leave.md)                    | Shifts, attendance and leave                                     |
+| [013](architecture/ADR-013-recruitment-and-onboarding.md)               | Recruitment (ATS), career portal and onboarding                  |

@@ -456,6 +456,9 @@ importers:
       '@hrm/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@hrm/business-rules':
+        specifier: workspace:*
+        version: link:../../packages/business-rules
       '@hrm/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens

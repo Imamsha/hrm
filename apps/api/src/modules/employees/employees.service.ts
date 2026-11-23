@@ -231,11 +231,22 @@ export class EmployeesService {
 
   /** Joining: the employee and their first employment record, atomically. */
   create(principal: AuthPrincipal, input: CreateInput): Promise<EmployeeDetails> {
+    if (!can(principal, P.EMPLOYEES_EMPLOYEE_CREATE, placementAttributes(input)))
+      throw AppException.forbidden('You cannot add employees to this part of the organization');
+    return this.prisma.withTenant((tx) => this.joinInTx(tx, principal, input));
+  }
+
+  /** Joining inside an existing tenant transaction (used by recruitment hires). */
+  async joinInTx(
+    tx: TenantTransaction,
+    principal: AuthPrincipal,
+    input: CreateInput,
+  ): Promise<EmployeeDetails> {
     const organizationId = principal.organizationId ?? '';
     if (!can(principal, P.EMPLOYEES_EMPLOYEE_CREATE, placementAttributes(input)))
       throw AppException.forbidden('You cannot add employees to this part of the organization');
     const today = todayIso();
-    return this.prisma.withTenant(async (tx) => {
+    {
       await validatePlacement(tx, input, null, today);
       if (input.membershipId) await assertLinkableMember(tx, input.membershipId);
       const employeeNumber = input.employeeNumber ?? (await nextEmployeeNumber(tx, organizationId));
@@ -286,7 +297,7 @@ export class EmployeesService {
         },
       });
       return this.details(tx, principal, await loadTarget(tx, principal, employee.id));
-    });
+    }
   }
 
   update(principal: AuthPrincipal, id: string, input: UpdateInput): Promise<EmployeeDetails> {

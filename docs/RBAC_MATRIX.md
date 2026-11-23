@@ -40,6 +40,16 @@ other tenants → 404/400).
 | `leave.request.read`              | Leave of employees in scope (Phase 05)                                                                             |
 | `leave.request.approve`           | Approve/reject and apply on behalf in scope (Phase 05)                                                             |
 | `leave.balance.adjust`            | Opening balances and adjustments in scope (Phase 05)                                                               |
+| `recruitment.requisition.read`    | View requisitions (Phase 06)                                                                                       |
+| `recruitment.requisition.manage`  | Create, edit, submit, cancel requisitions (Phase 06)                                                               |
+| `recruitment.requisition.approve` | Approve/reject requisitions — never your own (Phase 06)                                                            |
+| `recruitment.opening.manage`      | Create, edit, publish, hold and close openings (Phase 06)                                                          |
+| `recruitment.candidate.read`      | View openings, candidates, resumes, applications and all feedback (Phase 06)                                       |
+| `recruitment.candidate.manage`    | Add candidates/applications, move stages, assessments, interviews (Phase 06)                                       |
+| `recruitment.offer.manage`        | Offers and hiring (hire also needs `employees.employee.create`) (Phase 06)                                         |
+| `onboarding.template.manage`      | Onboarding templates (Phase 06)                                                                                    |
+| `onboarding.plan.read`            | View onboarding plans and templates (Phase 06)                                                                     |
+| `onboarding.plan.manage`          | Start/cancel plans, complete or skip any task (Phase 06)                                                           |
 | `users.member.read`               | View members (and pending invitations)                                                                             |
 | `users.member.invite`             | Invite people, revoke invitations                                                                                  |
 | `users.member.update`             | Suspend/reactivate members, change role assignments                                                                |
@@ -156,6 +166,27 @@ system roles match `SYSTEM_ROLES` exactly.
 | `POST/PATCH/DELETE /job-grades`, `/designations`                                                                                                                      | organization.job_catalog.manage                                                                                                                     |
 | `GET /work-weeks`, `GET /holiday-calendars`, `GET /holiday-calendars/:id/holidays`, `GET /calendar/resolve`                                                           | organization.calendar.read                                                                                                                          |
 | `POST/PATCH/DELETE /work-weeks`, `/holiday-calendars`, `/holiday-calendars/:id/holidays[/:holidayId]`                                                                 | organization.calendar.manage                                                                                                                        |
+
+### Phase 06 role grants
+
+| Permission                      | Owner | Admin | HR admin | Finance | Manager | Employee |
+| ------------------------------- | :---: | :---: | :------: | :-----: | :-----: | :------: |
+| recruitment.requisition.read    |   ✓   |   ✓   |    ✓     |    ✓    |    ✓    |          |
+| recruitment.requisition.manage  |   ✓   |   ✓   |    ✓     |         |    ✓    |          |
+| recruitment.requisition.approve |   ✓   |   ✓   |    ✓     |         |         |          |
+| recruitment.opening.manage      |   ✓   |   ✓   |    ✓     |         |         |          |
+| recruitment.candidate.read      |   ✓   |   ✓   |    ✓     |         |    ✓    |          |
+| recruitment.candidate.manage    |   ✓   |   ✓   |    ✓     |         |         |          |
+| recruitment.offer.manage        |   ✓   |   ✓   |    ✓     |         |         |          |
+| onboarding.template.manage      |   ✓   |   ✓   |    ✓     |         |         |          |
+| onboarding.plan.read            |   ✓   |   ✓   |    ✓     |         |    ✓    |          |
+| onboarding.plan.manage          |   ✓   |   ✓   |    ✓     |         |         |          |
+
+Phase 06 endpoints: `/recruitment/**` require the permission named in
+[API_DOCUMENTATION.md](API_DOCUMENTATION.md) (organization-wide grant). `/me/interviews/**`,
+`/me/onboarding/**`, `GET /onboarding/plans/:id` and `PUT /onboarding/tasks/:id/status` need
+`employees.self.access` plus being the panelist / joiner / assignee (or HR). `/careers/**` is
+public and rate-limited.
 
 ## Access scopes
 

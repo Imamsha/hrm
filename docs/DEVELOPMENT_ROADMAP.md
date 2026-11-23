@@ -10,7 +10,7 @@ approval before the next phase starts.
 | 03    | Organization management: companies, legal entities, branches, departments, teams, designations, job grades, locations, org chart, settings, working days, holiday calendars                                                                               | ✅ Done — approved 2026-11-18, CI green                     |
 | 04    | Employee management: directory, profile, personal/employment info, documents, skills, education, experience, history, transfer, promotion, probation, confirmation, lifecycle                                                                             | ✅ Done — approved 2026-11-19, CI green                     |
 | 05    | Attendance, shifts & leave: clock-in/out, biometric, QR, shifts, rostering, overtime, leave policies/applications/balances, approvals, attendance analytics                                                                                               | 🟡 Implemented & verified locally — awaiting owner approval |
-| 06    | Recruitment & onboarding: requisitions, openings, career portal, candidates, resume parsing, interviews, assessments, offers, onboarding, joining docs, induction                                                                                         | ⏳                                                          |
+| 06    | Recruitment & onboarding: requisitions, openings, career portal, candidates, resume parsing, interviews, assessments, offers, onboarding, joining docs, induction                                                                                         | 🟡 verified locally                                         |
 | 07    | India payroll: structures, earnings, deductions, EPF, ESI, PT, TDS, regimes, runs, payslips, arrears, approvals, bank files, F&F                                                                                                                          | ⏳                                                          |
 | 08    | Expenses, assets & travel: claims, reimbursements, OCR, asset allocation/return, travel requests/approvals/settlements                                                                                                                                    | ⏳                                                          |
 | 09    | Performance & learning: cycles, OKRs, goals, KPIs, feedback, 360, training, learning paths, certifications, engagement                                                                                                                                    | ⏳                                                          |
@@ -58,3 +58,12 @@ approval before the next phase starts.
   and QR scanning in the app — Phase 13.
 - Roster planning UI (the API supports day overrides), attendance analytics dashboards — Phase 12.
 - Leave types: UI for employment-type applicability (API supports it).
+
+## Carried forward from Phase 06
+
+- AI resume parsing, skill extraction, candidate summaries and JD assistance (Phase 11; never
+  auto-reject).
+- Offer letters as generated documents, e-signature and candidate e-mails (Phase 10).
+- Department-scoped recruitment permissions (Phase 03 scope model).
+- Candidate data retention/erasure automation (DPDP) built on recorded consent.
+- Recruitment analytics (Phase 12); mobile recruitment/onboarding screens (Phase 13).

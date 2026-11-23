@@ -11,6 +11,20 @@ import { EmployeeProfilePage, MyProfilePage } from '@/features/employees/profile
 import { MembersPage } from '@/features/members/members-page';
 import { OrganizationSettingsPage } from '@/features/organization/organization-settings-page';
 import { OverviewPage } from '@/features/overview/overview-page';
+import { ApplicationPage } from '@/features/recruitment/application-page';
+import { CareerJobPage, CareersPage } from '@/features/recruitment/careers-pages';
+import {
+  ApplicationsListPage,
+  CandidatesPage,
+  OpeningPipelinePage,
+  OpeningsPage,
+  RequisitionsPage,
+} from '@/features/recruitment/hiring-pages';
+import {
+  MyInterviewsPage,
+  MyOnboardingPage,
+  OnboardingPage,
+} from '@/features/recruitment/people-pages';
 import { RolesPage } from '@/features/roles/roles-page';
 import { CalendarsPage } from '@/features/structure/calendars-page';
 import { OrgChartPage } from '@/features/structure/org-chart-page';
@@ -47,6 +61,9 @@ export const routes: RouteObject[] = [
       // Reachable whether or not signed in.
       { path: '/reset-password', element: <ResetPasswordPage /> },
       { path: '/accept-invitation', element: <AcceptInvitationPage /> },
+      // Public career site (no sign-in).
+      { path: '/careers/:org', element: <CareersPage /> },
+      { path: '/careers/:org/:slug', element: <CareerJobPage /> },
       {
         element: <RequireAuth />,
         children: [
@@ -166,6 +183,87 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequirePermission permission={PERMISSIONS.ATTENDANCE_KIOSK_OPERATE}>
                     <KioskPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'recruitment/requisitions',
+                handle: crumb('Requisitions'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.RECRUITMENT_REQUISITION_READ}>
+                    <RequisitionsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'recruitment/openings',
+                handle: crumb('Openings'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.RECRUITMENT_CANDIDATE_READ}>
+                    <OpeningsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'recruitment/openings/:id',
+                handle: crumb('Pipeline'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.RECRUITMENT_CANDIDATE_READ}>
+                    <OpeningPipelinePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'recruitment/candidates',
+                handle: crumb('Candidates'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.RECRUITMENT_CANDIDATE_READ}>
+                    <CandidatesPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'recruitment/applications',
+                handle: crumb('Applications'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.RECRUITMENT_CANDIDATE_READ}>
+                    <ApplicationsListPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'recruitment/applications/:id',
+                handle: crumb('Application'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.RECRUITMENT_CANDIDATE_READ}>
+                    <ApplicationPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'recruitment/onboarding',
+                handle: crumb('Onboarding'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.ONBOARDING_PLAN_READ}>
+                    <OnboardingPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/interviews',
+                handle: crumb('My interviews'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <MyInterviewsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/onboarding',
+                handle: crumb('My onboarding'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <MyOnboardingPage />
                   </RequirePermission>
                 ),
               },

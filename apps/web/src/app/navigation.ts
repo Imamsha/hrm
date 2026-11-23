@@ -1,6 +1,13 @@
 import { PERMISSIONS, type Permission } from '@hrm/shared-types';
 import {
   Activity,
+  ClipboardCheck,
+  ClipboardList,
+  FileUser,
+  Inbox,
+  Megaphone,
+  MessagesSquare,
+  Rocket,
   Building2,
   CalendarCheck,
   CalendarClock,
@@ -116,6 +123,53 @@ export const navigation: NavSection[] = [
         to: '/time/kiosk',
         icon: QrCode,
         permission: PERMISSIONS.ATTENDANCE_KIOSK_OPERATE,
+      },
+    ],
+  },
+  {
+    label: 'Recruitment',
+    items: [
+      {
+        label: 'Requisitions',
+        to: '/recruitment/requisitions',
+        icon: ClipboardList,
+        permission: PERMISSIONS.RECRUITMENT_REQUISITION_READ,
+      },
+      {
+        label: 'Openings',
+        to: '/recruitment/openings',
+        icon: Megaphone,
+        permission: PERMISSIONS.RECRUITMENT_CANDIDATE_READ,
+      },
+      {
+        label: 'Candidates',
+        to: '/recruitment/candidates',
+        icon: FileUser,
+        permission: PERMISSIONS.RECRUITMENT_CANDIDATE_READ,
+      },
+      {
+        label: 'Applications',
+        to: '/recruitment/applications',
+        icon: Inbox,
+        permission: PERMISSIONS.RECRUITMENT_CANDIDATE_READ,
+      },
+      {
+        label: 'My interviews',
+        to: '/me/interviews',
+        icon: MessagesSquare,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Onboarding',
+        to: '/recruitment/onboarding',
+        icon: ClipboardCheck,
+        permission: PERMISSIONS.ONBOARDING_PLAN_READ,
+      },
+      {
+        label: 'My onboarding',
+        to: '/me/onboarding',
+        icon: Rocket,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
       },
     ],
   },

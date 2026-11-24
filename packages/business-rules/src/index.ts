@@ -12,3 +12,4 @@ export * from './payroll-run.js';
 export * from './expenses.js';
 export * from './performance.js';
 export * from './learning-engagement.js';
+export * from './projects.js';

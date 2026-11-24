@@ -1,6 +1,13 @@
 import { PERMISSIONS, type Permission } from '@hrm/shared-types';
 import {
   Activity,
+  FileSpreadsheet,
+  FolderKanban,
+  Handshake,
+  ListTodo,
+  Clock3,
+  ClipboardClock,
+  Globe,
   Award,
   BookOpen,
   Gauge,
@@ -63,6 +70,8 @@ export interface NavItem {
   icon: LucideIcon;
   /** Hidden unless the active organization grants this permission. */
   permission?: Permission;
+  /** Hidden when this permission is granted (e.g. the client portal for staff). */
+  hideWith?: Permission;
 }
 
 export interface NavSection {
@@ -291,6 +300,59 @@ export const navigation: NavSection[] = [
         to: '/assets/licenses',
         icon: KeySquare,
         permission: PERMISSIONS.ASSETS_ASSET_READ,
+      },
+    ],
+  },
+  {
+    label: 'Projects',
+    items: [
+      {
+        label: 'My work',
+        to: '/me/work',
+        icon: ListTodo,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'My timesheet',
+        to: '/me/timesheet',
+        icon: Clock3,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Projects',
+        to: '/projects',
+        icon: FolderKanban,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Timesheets',
+        to: '/timesheets',
+        icon: ClipboardClock,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Clients',
+        to: '/clients',
+        icon: Handshake,
+        permission: PERMISSIONS.PROJECTS_PROJECT_READ,
+      },
+      {
+        label: 'Billing',
+        to: '/billing',
+        icon: FileSpreadsheet,
+        permission: PERMISSIONS.PROJECTS_BILLING_MANAGE,
+      },
+    ],
+  },
+  {
+    label: 'Client portal',
+    items: [
+      {
+        label: 'Portal',
+        to: '/portal',
+        icon: Globe,
+        permission: PERMISSIONS.PROJECTS_PORTAL_ACCESS,
+        hideWith: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
       },
     ],
   },

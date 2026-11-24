@@ -24,6 +24,7 @@ import { ExpensesModule } from './modules/expenses/expenses.module.js';
 import { PayrollModule } from './modules/payroll/payroll.module.js';
 import { RecruitmentModule } from './modules/recruitment/recruitment.module.js';
 import { TalentModule } from './modules/talent/talent.module.js';
+import { ProjectsModule } from './modules/projects/projects.module.js';
 import { StructureModule } from './modules/structure/structure.module.js';
 import { TimeModule } from './modules/time/time.module.js';
 
@@ -78,6 +79,7 @@ export class AppModule {
         PayrollModule,
         ExpensesModule,
         TalentModule,
+        ProjectsModule,
       ],
       providers: [
         // Order matters: rate limiting runs before authentication work.

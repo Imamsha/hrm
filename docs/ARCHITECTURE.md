@@ -259,23 +259,39 @@ See ADR-012.
 - Correct quiz answers stay server-side for learners; completion issues the certification and
   records the course skills on the employee.
 
-## 19. ADR index
+## 19. Clients & projects (Phase 10)
 
-| ADR                                                                     | Title                                                            |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| [001](architecture/ADR-001-monorepo-and-toolchain.md)                   | Monorepo, toolchain and dependency policy                        |
-| [002](architecture/ADR-002-backend-runtime-and-testing.md)              | NestJS 12 ESM runtime, validation and test runners               |
-| [003](architecture/ADR-003-database-roles-and-rls.md)                   | Database roles, tenant context and Row-Level Security            |
-| [004](architecture/ADR-004-api-conventions.md)                          | API conventions: versioning, envelope, errors, request IDs       |
-| [005](architecture/ADR-005-design-system.md)                            | Design system across web and mobile                              |
-| [006](architecture/ADR-006-ai-platform.md)                              | AI platform foundation and guardrails                            |
-| [007](architecture/ADR-007-object-storage.md)                           | S3-compatible object storage (RustFS instead of MinIO)           |
-| [008](architecture/ADR-008-authentication-and-sessions.md)              | Authentication and sessions                                      |
-| [009](architecture/ADR-009-authorization-rbac-abac.md)                  | Authorization (RBAC + ABAC) and tenant resolution                |
-| [010](architecture/ADR-010-organization-structure-and-scoped-access.md) | Organization structure, calendars and structural ABAC scopes     |
-| [011](architecture/ADR-011-employee-management.md)                      | Employee records, effective-dated job history and sensitive data |
-| [012](architecture/ADR-012-time-attendance-leave.md)                    | Shifts, attendance and leave                                     |
-| [013](architecture/ADR-013-recruitment-and-onboarding.md)               | Recruitment (ATS), career portal and onboarding                  |
-| [014](architecture/ADR-014-india-payroll.md)                            | India payroll: sourced statutory rules, runs, payslips, F&F      |
-| [015](architecture/ADR-015-expenses-assets-travel.md)                   | Expenses, travel and assets                                      |
-| [016](architecture/ADR-016-performance-learning-engagement.md)          | Performance, learning and engagement                             |
+- `modules/projects` (clients, projects, timesheets, billing and portal services); pure rules in
+  `@hrm/business-rules/projects` (work-item hierarchy and cycles, board progress, sprint moves and
+  velocity, ISO weeks, timesheet checks, billing rate, invoice lines/tax/totals with half-up
+  rounding, balances, numbering, due dates, budget use).
+- One `work_items` table holds epics to subtasks with a database-checked hierarchy; numbers
+  (`WEB-42`) come from a per-project counter under a row lock. Board columns are per project with
+  three categories that drive progress and sprint velocity.
+- Approved timesheets and issued invoices are frozen by triggers. Drafting an invoice reserves the
+  approved time it bills, so hours are never billed twice; voiding releases them.
+- The client portal reuses logins and memberships: a `client` role with one permission plus a link
+  to one client. Every portal query is filtered to that client, portal-enabled projects and
+  client-visible content.
+
+## 20. ADR index
+
+| ADR                                                                     | Title                                                             |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| [001](architecture/ADR-001-monorepo-and-toolchain.md)                   | Monorepo, toolchain and dependency policy                         |
+| [002](architecture/ADR-002-backend-runtime-and-testing.md)              | NestJS 12 ESM runtime, validation and test runners                |
+| [003](architecture/ADR-003-database-roles-and-rls.md)                   | Database roles, tenant context and Row-Level Security             |
+| [004](architecture/ADR-004-api-conventions.md)                          | API conventions: versioning, envelope, errors, request IDs        |
+| [005](architecture/ADR-005-design-system.md)                            | Design system across web and mobile                               |
+| [006](architecture/ADR-006-ai-platform.md)                              | AI platform foundation and guardrails                             |
+| [007](architecture/ADR-007-object-storage.md)                           | S3-compatible object storage (RustFS instead of MinIO)            |
+| [008](architecture/ADR-008-authentication-and-sessions.md)              | Authentication and sessions                                       |
+| [009](architecture/ADR-009-authorization-rbac-abac.md)                  | Authorization (RBAC + ABAC) and tenant resolution                 |
+| [010](architecture/ADR-010-organization-structure-and-scoped-access.md) | Organization structure, calendars and structural ABAC scopes      |
+| [011](architecture/ADR-011-employee-management.md)                      | Employee records, effective-dated job history and sensitive data  |
+| [012](architecture/ADR-012-time-attendance-leave.md)                    | Shifts, attendance and leave                                      |
+| [013](architecture/ADR-013-recruitment-and-onboarding.md)               | Recruitment (ATS), career portal and onboarding                   |
+| [014](architecture/ADR-014-india-payroll.md)                            | India payroll: sourced statutory rules, runs, payslips, F&F       |
+| [015](architecture/ADR-015-expenses-assets-travel.md)                   | Expenses, travel and assets                                       |
+| [016](architecture/ADR-016-performance-learning-engagement.md)          | Performance, learning and engagement                              |
+| [017](architecture/ADR-017-clients-and-projects.md)                     | Clients and projects (work, sprints, timesheets, billing, portal) |

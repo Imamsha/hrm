@@ -11,6 +11,21 @@ import { EmployeeProfilePage, MyProfilePage } from '@/features/employees/profile
 import { MembersPage } from '@/features/members/members-page';
 import { OrganizationSettingsPage } from '@/features/organization/organization-settings-page';
 import { OverviewPage } from '@/features/overview/overview-page';
+import { BillingPage, ClientsPage, InvoicePage } from '@/features/projects/billing-pages';
+import {
+  PortalHomePage,
+  PortalInvoicePage,
+  PortalItemPage,
+  PortalProjectPage,
+} from '@/features/projects/portal-pages';
+import {
+  MyWorkPage,
+  ProjectPage,
+  ProjectsPage,
+  WorkItemPage,
+} from '@/features/projects/project-pages';
+import { MyTimesheetPage, TimesheetsPage } from '@/features/projects/time-pages';
+import { HomePage } from '@/features/projects/home';
 import { AssetPage, AssetsPage, LicensesPage, MyAssetsPage } from '@/features/expenses/asset-pages';
 import {
   ClaimPage,
@@ -104,7 +119,11 @@ export const routes: RouteObject[] = [
             element: <AppShell />,
             handle: crumb('Home'),
             children: [
-              { index: true, element: <OverviewPage />, handle: crumb('Overview') },
+              {
+                index: true,
+                element: <HomePage overview={<OverviewPage />} />,
+                handle: crumb('Overview'),
+              },
               {
                 path: 'system/status',
                 element: <SystemStatusPage />,
@@ -431,6 +450,123 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequirePermission permission={PERMISSIONS.EXPENSES_CATEGORY_MANAGE}>
                     <ExpenseSetupPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'projects',
+                handle: crumb('Projects'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <ProjectsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'projects/:id',
+                handle: crumb('Project'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <ProjectPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'projects/:id/items/:itemId',
+                handle: crumb('Work item'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <WorkItemPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/work',
+                handle: crumb('My work'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <MyWorkPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/timesheet',
+                handle: crumb('My timesheet'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <MyTimesheetPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'timesheets',
+                handle: crumb('Timesheets'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <TimesheetsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'clients',
+                handle: crumb('Clients'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <ClientsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'billing',
+                handle: crumb('Billing'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PROJECTS_BILLING_MANAGE}>
+                    <BillingPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'billing/invoices/:id',
+                handle: crumb('Invoice'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PROJECTS_BILLING_MANAGE}>
+                    <InvoicePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'portal',
+                handle: crumb('Client portal'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PROJECTS_PORTAL_ACCESS}>
+                    <PortalHomePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'portal/projects/:id',
+                handle: crumb('Project'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PROJECTS_PORTAL_ACCESS}>
+                    <PortalProjectPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'portal/items/:id',
+                handle: crumb('Item'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PROJECTS_PORTAL_ACCESS}>
+                    <PortalItemPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'portal/invoices/:id',
+                handle: crumb('Invoice'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PROJECTS_PORTAL_ACCESS}>
+                    <PortalInvoicePage />
                   </RequirePermission>
                 ),
               },

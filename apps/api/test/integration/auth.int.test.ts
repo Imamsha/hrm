@@ -37,7 +37,7 @@ describe('registration', () => {
 
     const roles = await client.get('/roles', owner.accessToken);
     expect(roles.body.data.map((r: { key: string }) => r.key).sort()).toEqual(
-      ['admin', 'employee', 'finance', 'hr_admin', 'manager', 'owner'].sort(),
+      ['admin', 'client', 'employee', 'finance', 'hr_admin', 'manager', 'owner'].sort(),
     );
     const sub = await client.get('/organizations/current/subscription', owner.accessToken);
     expect(sub.body.data).toMatchObject({ planKey: 'trial', status: 'TRIALING' });

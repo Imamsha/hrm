@@ -4,86 +4,83 @@ _Last updated: 2026-11-24_
 
 ## Current phase
 
-**Phase 09 — Performance, learning & engagement: complete, verified locally, awaiting owner
-approval.** Design: [ADR-016](docs/architecture/ADR-016-performance-learning-engagement.md).
-Nothing of Phase 09 is committed yet.
+**Phase 10 — Clients & projects: complete, verified locally, awaiting owner approval.** Design:
+[ADR-017](docs/architecture/ADR-017-clients-and-projects.md). Pushed to `main` on 2026-11-24 at the
+owner's request; Phase 11 is **not started** (owner: start on 2026-11-25).
 
-- Phases 01–08: approved and pushed (last push `aa28ca1`); CI not checked from this machine (no
+- Phases 01–09: approved and pushed (Phase 09 = `f169c98`); CI not checked from this machine (no
   `gh` CLI).
-- Owner decision 2026-11-24: **Clients & projects** (epics, stories, tasks, bugs, assignments,
-  sprints & boards, timesheets, client billing, client portal) is added as **Phase 10**; later phases
-  shift by one (15 in total).
 
-**Next phase (after approval):** Phase 10 — Clients & projects.
+**Next phase (after approval):** Phase 11 — Documents, helpdesk & workflows (see
+`docs/DEVELOPMENT_ROADMAP.md`).
 
-## Phase 09 verification (2026-11-24)
+## Phase 10 verification (2026-11-24)
 
-| Check                                                    | Result                                                                                                                                                   |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm turbo run typecheck lint test build` (11 packages) | ✅ 37/37 tasks (`--force --concurrency=2`)                                                                                                               |
-| `pnpm format:check`                                      | ✅ clean                                                                                                                                                 |
-| Unit/component tests                                     | ✅ API 81 · shared-types 3 · validation 80 · api-client 12 · design-tokens 38 · business-rules 93 · ui-web 12 · web 59 · mobile 8 (jest)                 |
-| Integration tests (real Postgres/Redis/S3/Mailpit)       | ✅ 122 passed (113 earlier + 9 Phase 09)                                                                                                                 |
-| Migrations                                               | ✅ 11 applied to dev and test; drift check reports no difference                                                                                         |
-| Playwright E2E (production build + live API)             | ✅ 13 passed, 11 skipped by design. New: linked employee creates a KPI goal and checks in (25 %); anonymous pulse survey published, answered, eNPS shown |
-| GitHub Actions                                           | ⏳ runs when Phase 09 is pushed                                                                                                                          |
+| Check                                                    | Result                                                                                                                                            |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm turbo run typecheck lint test build` (11 packages) | ✅ 37/37 tasks (`--force --concurrency=2`)                                                                                                        |
+| `pnpm format:check`                                      | ✅ clean                                                                                                                                          |
+| Unit/component tests                                     | ✅ API 81 · shared-types 3 · validation 86 · api-client 12 · design-tokens 38 · business-rules 102 · ui-web 12 · web 63 · mobile 8 (jest)         |
+| Integration tests (real Postgres/Redis/S3/Mailpit)       | ✅ 129 passed (122 earlier + 7 Phase 10)                                                                                                          |
+| Migrations                                               | ✅ 12 applied to dev and test; drift check reports no difference                                                                                  |
+| Playwright E2E (production build + live API)             | ✅ 14 passed, 12 skipped by design. New: client → project → story moved on the board → milestone invoice drafted, issued (INV-YYYY-0001) and paid |
+| GitHub Actions                                           | ⏳ runs when Phase 10 is pushed                                                                                                                   |
 
-## Phase 09 delivered
+## Phase 10 delivered
 
-- **Goals & OKRs:** personal, department and organization goals; KPIs and key results measured
-  from a start to a target (rising or falling); objectives roll up their key results by weight;
-  append-only check-ins with history. Personal goals are visible to the employee, their manager
-  and HR only.
-- **Reviews:**
-  - Rating scales, competencies and templates are the organization's own (nothing pre-filled).
-  - A cycle snapshots its template at launch and creates self, manager, peer and upward slots
-    for its audience. Employees nominate peers within the template's bounds.
-  - The manager review computes a weighted score (goals vs competencies) mapped to the nearest
-    scale point; HR calibrates with a required reason; closing releases results and freezes the
-    cycle in the database.
-  - Peer and upward feedback reaches the employee only after release, without names, and only at
-    the template's anonymity minimum. Promotion is a recorded recommendation only.
-  - HR sees progress and the rating distribution; employees acknowledge their results.
-- **Improvement plans:** objectives, check-ins and an outcome (passed, not met, extended,
-  cancelled), visible to the employee, manager and HR.
-- **Learning:** courses with content and quiz modules (answers never sent to learners), pass
-  marks, certification validity, skills; learning paths; self-enrolment, assignment by HR or by
-  managers to their reports, due dates and overdue flags; completion issues the certification and
-  records the skills; feedback; skill matrix and expiring certifications.
-- **Engagement:**
-  - Surveys and pulse checks (rating, eNPS, choice, text) for an audience. Anonymous answers
-    store no employee id, a random id and a day-only time; results and department breakdowns are
-    hidden below the survey's minimum group size.
-  - Recognition with badges and points, a rewards catalogue, redemptions decided by HR (rejecting
-    returns points and stock).
-  - Announcements with read tracking and acknowledgement; events with RSVP and capacity;
-    suggestions (optionally anonymous) with votes and an official response.
-- **Web:** Performance, Learning and Engagement sections in the navigation (13 new pages).
+- **Clients:** code, billing currency, payment terms, tax registration number, billing address,
+  contacts, and portal logins.
+- **Projects:**
+  - Client or internal, billed as time & materials, fixed fee or non-billable, with a default
+    rate, budget (amount and hours) and dates.
+  - Members with project roles (manager, member, viewer), their own billing rate and allocation.
+  - Project managers see hours and approved billable value against the budget.
+- **Work:**
+  - Epics → features → stories → tasks/bugs → subtasks, numbered per project (`WEB-42`), with
+    assignees, priority, points, estimates, due dates, labels and bug severity/steps.
+  - The hierarchy is checked by the API and the database.
+  - Comments (internal or shared with the client) and an append-only history.
+  - **My work** lists everything assigned to you.
+- **Sprints & boards:** the project's own board columns; one active sprint; the board shows the
+  sprint or the backlog; completing a sprint records velocity and moves unfinished work on.
+- **Timesheets:** weekly entries against your projects (quarter hours, at most 24 h a day,
+  non-billable projects never billable), submitted to your reporting manager, approved or
+  returned with a reason, frozen once approved. HR, finance and billing get a time report with
+  billable value.
+- **Billing:**
+  - Your own tax rates and invoice numbering.
+  - Draft invoices from approved, unbilled time at member or project rates, plus fixed-fee lines.
+  - Issue (numbered, due date from terms), partial and full payments, void with a reason
+    (releases the time).
+  - Issued invoices are frozen in the database.
+- **Client portal:** client contacts sign in to see:
+  - their portal projects and progress;
+  - shared items and conversations, where they can reply and report bugs or requests;
+  - issued invoices.
 
-## Assumptions (recorded in ADR-016; the owner may override)
+  Nothing else is reachable.
 
-1. Rating scales, weights, competencies, the anonymity minimum, survey minimum group sizes and
-   points values are configured by the organization; none are pre-loaded.
-2. AI writing help (review drafts, summaries) is deferred to Phase 12; AI never rates, ranks or
-   recommends promotion.
-3. Course content is links and text; SCORM/xAPI and external learning platforms are Phase 15.
-4. Rewards carry no monetary or tax treatment.
-5. HR permissions are organization-wide; managers act on direct reports through the reporting line.
+## Assumptions (recorded in ADR-017; the owner may override)
 
-## Issues found and fixed during Phase 09
+1. Timesheets are approved by the reporting manager (as leave and expenses are); a configurable
+   chain or project-manager approval arrives with the Phase 11 workflow engine.
+2. Invoice tax uses rates you configure; no GST, TDS or e-invoicing (IRN) rule is built in.
+3. One currency per invoice (the client's); no conversion of time.
+4. Board columns are free-form per project with three categories; any card can move to any column.
+5. Client contacts use the normal login with the `client` role; no separate portal domain.
+6. Time is not pushed into payroll; PDF invoices come with Phase 11 documents.
 
-1. **Anonymous answers could have been re-identified.** Survey responses and suggestions used
-   time-ordered (v7) ids and exact timestamps, which could be matched to request logs or to the
-   invitation's "responded" time. They now use a random v4 id and a day-only time, and anonymous
-   suggestions write no audit entry.
-2. The review page read the scale from an untyped field; the shared `ReviewDetails` type now
-   carries the snapshotted scale, and the casts are gone.
-3. Forms validated the flat field values before nested bodies (goal measures, audiences, ISO
-   datetimes) were built, so valid goals would have been rejected. `ResourceForm` gained a
-   `transform` prop that shapes the body before validation.
-4. The goal owner picker offered "— None —" for a field that is required when shown; fixed (found
-   by E2E).
-5. An integration-test helper missed an `await`; peers in the test skipped a required question.
+## Issues found and fixed during Phase 10
+
+1. **Project list crashed for users without an employee record** (for example a new owner): the
+   query compared member ids with an empty string, which PostgreSQL rejects as a UUID. Fixed, and
+   covered by the integration test.
+2. Validation reported a bad entry's hours twice (field and week checks); the week check now
+   leaves per-entry hours to the field.
+3. The new-item dialog loaded the project's items even while closed; it now loads only when open.
+4. ADR-017 first said project managers approve timesheets; corrected to match the decision
+   (reporting manager) and the as-built grants.
+5. The registration test listed the system roles explicitly; updated for the new `client` role.
 
 ## Known issues and risks
 
@@ -117,18 +114,20 @@ Nothing of Phase 09 is committed yet.
 | 20261123000000_india_payroll                      | ✅  | ✅   |
 | 20261124000000_expenses_travel_assets             | ✅  | ✅   |
 | 20261125000000_performance_learning_engagement    | ✅  | ✅   |
+| 20261126000000_clients_projects                   | ✅  | ✅   |
 
 ## Next recommended task
 
-1. Owner reviews Phase 09 (start `pnpm dev`, sign in as owner, link yourself to an employee):
-   - **Performance setup**: add a rating scale, competencies and a review template;
-   - **Review cycles**: create a cycle, launch it, write the self and manager reviews under
-     **Reviews**, calibrate and close;
-   - **Goals & OKRs**: an objective with key results, then check in;
-   - **Training & skills**: create a course with a quiz, publish and assign it; take it in
-     **My learning**;
-   - **Engagement admin**: badges, rewards, an announcement and an event; then **Company**,
-     **Surveys** and **Suggestions**.
+1. Owner reviews Phase 10 (start `pnpm dev`, sign in as owner, link yourself to an employee):
+   - **Clients**: add a client and a contact;
+   - **Projects**: create a project, add members with rates, create an epic, stories and a bug,
+     plan a sprint, start it and move cards on the **Board**;
+   - **My timesheet**: log time and submit (an employee with a manager shows the approval flow
+     under **Timesheets**);
+   - **Billing**: add a tax rate, draft an invoice from approved time or a milestone, issue it and
+     record a payment;
+   - **Client portal**: invite a contact under Members with only the **Client** role, link them
+     on the client, enable the portal on the project and sign in as them.
 2. Confirm or override the assumptions above.
-3. On approval: commit and push Phase 09, then confirm CI is green.
-4. Then Phase 10: Clients & projects.
+3. On approval: commit and push Phase 10, then confirm CI is green.
+4. Then Phase 11.

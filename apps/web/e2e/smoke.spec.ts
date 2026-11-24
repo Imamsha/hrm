@@ -674,3 +674,65 @@ test('track a KPI goal and answer an anonymous pulse survey', async ({ page, isM
   await page.getByRole('button', { name: 'Results' }).click();
   await expect(page.getByLabel('Survey results')).toContainText('eNPS 100');
 });
+
+test('run a client project on a board and bill a milestone to paid', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Covered on desktop');
+  test.setTimeout(120_000);
+  await registerViaUi(page);
+
+  await page.goto('/clients');
+  await page.getByRole('button', { name: /New client/ }).click();
+  let dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Code/).fill('ACME');
+  await dialog.getByLabel(/^Name/).fill('Acme Ltd');
+  await dialog.getByLabel(/^Billing currency/).fill('INR');
+  await dialog.getByLabel(/^Payment terms/).fill('30');
+  await dialog.getByRole('button', { name: 'Create client' }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.goto('/projects');
+  await page.getByRole('button', { name: /New project/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Key/).fill('WEB');
+  await dialog.getByLabel(/^Name/).fill('Website');
+  await dialog.getByLabel(/^Client/).selectOption({ label: 'Acme Ltd (ACME)' });
+  await dialog.getByRole('button', { name: 'Create project' }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole('list', { name: 'Projects' }).getByRole('link', { name: 'Website' }).click();
+
+  // A story on the board moves between the project's columns.
+  await page
+    .getByRole('button', { name: /New item/ })
+    .first()
+    .click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Title/).fill('Pay by card');
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(dialog).toBeHidden();
+  const todo = page.getByRole('region', { name: 'Column To do' });
+  await expect(todo.getByText('Pay by card')).toBeVisible();
+  await todo.getByLabel('Move WEB-1').selectOption({ label: 'In progress' });
+  await expect(
+    page.getByRole('region', { name: 'Column In progress' }).getByText('Pay by card'),
+  ).toBeVisible();
+
+  // A fixed-fee milestone: draft → issued (numbered) → paid.
+  await page.goto('/billing');
+  await page.getByRole('button', { name: /New invoice/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Client/).selectOption({ label: 'Acme Ltd (INR)' });
+  await dialog.getByRole('button', { name: /Manual line/ }).click();
+  const line = dialog.getByRole('group', { name: 'Line 1' });
+  await line.getByLabel('Description').fill('Milestone 1');
+  await line.getByLabel('Unit price').fill('50000');
+  await dialog.getByRole('button', { name: 'Create draft' }).click();
+  await expect(page.getByRole('heading', { name: 'Draft invoice' })).toBeVisible();
+  await expect(page.getByLabel('Invoice total')).toHaveText('50000.00');
+  await page.getByRole('button', { name: 'Issue' }).click();
+  await expect(page.getByRole('heading', { name: /^INV-\d{4}-0001$/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Record payment' }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Record' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('paid', { exact: true })).toBeVisible();
+});

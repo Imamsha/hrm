@@ -17,8 +17,8 @@ approval before the next phase starts.
 | 06    | Recruitment & onboarding: requisitions, openings, career portal, candidates, resume parsing, interviews, assessments, offers, onboarding, joining docs, induction                                                                                         | ✅ pushed `70f9e5c`                                         |
 | 07    | India payroll: structures, earnings, deductions, EPF, ESI, PT, TDS, regimes, runs, payslips, arrears, approvals, bank files, F&F                                                                                                                          | ✅ pushed `d454f0e`                                         |
 | 08    | Expenses, assets & travel: claims, reimbursements, OCR, asset allocation/return, travel requests/approvals/settlements                                                                                                                                    | 🟡 verified locally                                         |
-| 09    | Performance & learning: cycles, OKRs, goals, KPIs, feedback, 360, training, learning paths, certifications, engagement                                                                                                                                    | 🟡 in progress (started 2026-11-24)                         |
-| 10    | Clients & projects: clients, projects, features/epics, stories, tasks, bugs, assignments, sprints & boards, timesheets, client billing, client portal (owner request 2026-11-24)                                                                          | ⏳                                                          |
+| 09    | Performance & learning: cycles, OKRs, goals, KPIs, feedback, 360, training, learning paths, certifications, engagement                                                                                                                                    | ✅ pushed (`f169c98`)                                       |
+| 10    | Clients & projects: clients, projects, features/epics, stories, tasks, bugs, assignments, sprints & boards, timesheets, client billing, client portal (owner request 2026-11-24)                                                                          | 🟡 verified locally, awaiting approval                      |
 | 11    | Documents, helpdesk & workflows: document management, templates, e-signature integration, ticketing, SLA, knowledge base, workflow engine, approval designer, escalation, delegation                                                                      | ⏳                                                          |
 | 12    | Advanced AI platform: HR assistant, recruitment AI, document intelligence, OCR, embeddings, RAG, agents, workforce insights, automation, cost monitoring, AI security, evaluation                                                                         | ⏳                                                          |
 | 13    | Analytics & reporting: dashboards, employee/payroll/attendance/recruitment/attrition/performance analytics, report builder, export, scheduled reports, AI summaries                                                                                       | ⏳                                                          |
@@ -81,6 +81,15 @@ approval before the next phase starts.
 - Investment proof verification workflow and declaration lock dates (Phase 11 workflows).
 - Off-cycle runs (bonus, correction) and payroll variance analytics (Phase 13).
 - Batched/background calculation for very large runs (BullMQ), and mobile payslips (Phase 14).
+
+## Carried forward from Phase 10
+
+- PDF invoices and statements (Phase 11 documents); e-mailing invoices to clients (Phase 15).
+- E-invoicing (IRN), GST/TDS treatment, accounting exports and payment gateways (Phase 15 integrations).
+- Configurable timesheet approval chains and project-manager approval (Phase 11 workflow engine).
+- Gantt/timeline views, dependencies, burndown charts and project profitability (Phase 13 analytics).
+- Drag-and-drop board ordering and workflow transition rules between columns.
+- Mobile timesheets and board (Phase 14); notifications on assignment and client replies (Phase 15).
 
 ## Carried forward from Phase 09
 

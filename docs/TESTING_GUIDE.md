@@ -35,6 +35,28 @@ Integration tests use an isolated database (`hrm_test`), Redis DB 1 and bucket `
 (`TEST_*` variables in `.env.example`). The audit log is append-only, so tests create uniquely
 named tenants instead of cleaning up.
 
+## What is covered (Phase 10)
+
+Rates and the tax rate in tests are **fictional round numbers** (a 1000/h rate, a 10 % "Test tax").
+
+- **business-rules** (`projects.test.ts`, 9 tests): hierarchy and cycles, item keys, board column
+  rules, progress by count and points, sprint moves and velocity, ISO weeks, timesheet checks
+  (week, quarter hours, 24 h/day), billing-rate fallback, invoice lines/tax/totals with half-up
+  rounding, payments and overpayment, numbering, due dates, budget use.
+- **validation** (`projects.test.ts`): codes/currency normalised and omitted update fields left
+  untouched, billable/portal projects need a client, one column per category, bug-only fields,
+  Monday weeks and quarter hours, invoices need time or lines.
+- **integration** (`projects.int.test.ts`, 7 tests): member-only visibility and rates; numbering,
+  hierarchy, history and the cross-project parent trigger (direct SQL); one active sprint,
+  velocity and carry-over; timesheets to the reporting manager, no self-approval, frozen when
+  approved (direct SQL); invoices from approved time at member rates with tax, no double billing,
+  numbering, frozen issued invoices (direct SQL), partial and full payment, void; client portal
+  isolation (projects, items, comments, invoices, no other endpoint); tenant isolation.
+- **web** (`features/projects/projects.test.tsx`, 4 tests): navigation gating, client contacts
+  land on the portal, moving a board card, timesheet save body.
+- **E2E**: client → project → story moved on the board → milestone invoice drafted, issued
+  (INV-YYYY-0001) and paid.
+
 ## What is covered (Phase 09)
 
 - **business-rules** (`talent.test.ts`, 11 tests): metric progress (rising and falling targets),

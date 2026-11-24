@@ -40,7 +40,9 @@ export function SidebarNav({
     .map((section) => ({
       ...section,
       items: section.items.filter(
-        (item) => !item.permission || hasPermission(session, item.permission),
+        (item) =>
+          (!item.permission || hasPermission(session, item.permission)) &&
+          !(item.hideWith && hasPermission(session, item.hideWith)),
       ),
     }))
     .filter((section) => section.items.length > 0);

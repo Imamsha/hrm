@@ -77,6 +77,13 @@ other tenants → 404/400).
 | `engagement.survey.manage`        | Surveys and pulse checks, and their (aggregated) results (Phase 09)                                                |
 | `engagement.content.manage`       | Announcements, events, badges, rewards and redemptions (Phase 09)                                                  |
 | `engagement.suggestion.manage`    | Respond to suggestions (Phase 09)                                                                                  |
+| `projects.client.manage`          | Clients, contacts and client portal logins (Phase 10)                                                              |
+| `projects.project.read`           | See every project (otherwise only your own) (Phase 10)                                                             |
+| `projects.project.manage`         | Create projects; manage members, rates and any project (Phase 10)                                                  |
+| `projects.timesheet.read`         | All timesheets and the time report (Phase 10)                                                                      |
+| `projects.timesheet.approve`      | Approve timesheets of employees without a reporting manager (Phase 10)                                             |
+| `projects.billing.manage`         | Tax rates, invoice numbering, invoices and payments (Phase 10)                                                     |
+| `projects.portal.access`          | Client portal — the `client` role only (Phase 10)                                                                  |
 | `users.member.read`               | View members (and pending invitations)                                                                             |
 | `users.member.invite`             | Invite people, revoke invitations                                                                                  |
 | `users.member.update`             | Suspend/reactivate members, change role assignments                                                                |
@@ -269,6 +276,24 @@ Managers act on their **direct reports** by relationship, not by permission: the
 improvement plans, training assignments, and manager reviews. Everything under `/me/**`, taking
 part in reviews, surveys, recognition, events and suggestions needs `employees.self.access`.
 Nobody recognises themselves; peer and upward feedback is never shown with names.
+
+### Phase 10 role grants
+
+| Permission                 | Owner | Admin | HR admin | Finance | Manager | Employee | Client |
+| -------------------------- | :---: | :---: | :------: | :-----: | :-----: | :------: | :----: |
+| projects.client.manage     |   ✓   |   ✓   |          |         |         |          |        |
+| projects.project.read      |   ✓   |   ✓   |    ✓     |    ✓    |    ✓    |          |        |
+| projects.project.manage    |   ✓   |   ✓   |          |         |         |          |        |
+| projects.timesheet.read    |   ✓   |   ✓   |    ✓     |    ✓    |         |          |        |
+| projects.timesheet.approve |   ✓   |   ✓   |    ✓     |         |         |          |        |
+| projects.billing.manage    |   ✓   |   ✓   |          |    ✓    |         |          |        |
+| projects.portal.access     |   ✓   |   ✓   |          |         |         |          |   ✓    |
+
+The new **`client`** system role holds only `projects.portal.access`; every other endpoint denies
+it. The portal additionally requires a `client_portal_users` link, so owners and admins (who hold
+every permission) see no portal data. Project roles are **relationships**: project managers manage
+members, rates, columns and sprints; members (not viewers) create and change work items and log
+time. Timesheets are approved by the reporting manager; nobody approves their own.
 
 ## Access scopes
 

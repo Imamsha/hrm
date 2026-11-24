@@ -3,6 +3,10 @@
 Each phase ends with the quality gate in `MASTER_PROJECT_INSTRUCTIONS.md` §13 and requires owner
 approval before the next phase starts.
 
+> **Renumbered 2026-11-24:** Clients & projects was added as Phase 10. Notes and ADRs written before
+> that date that mention Phases 10–14 mean the phases now numbered 11–15 (the carry-forward lists
+> below are already renumbered).
+
 | Phase | Scope                                                                                                                                                                                                                                                     | Status                                                      |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | 01    | Foundation & architecture: monorepo, web/mobile/API setup, shared packages, PostgreSQL, Prisma, Redis, BullMQ, Docker, logging, health, Swagger, testing foundation, design system, docs                                                                  | ✅ Done — approved 2026-11-16, CI green                     |
@@ -13,12 +17,13 @@ approval before the next phase starts.
 | 06    | Recruitment & onboarding: requisitions, openings, career portal, candidates, resume parsing, interviews, assessments, offers, onboarding, joining docs, induction                                                                                         | ✅ pushed `70f9e5c`                                         |
 | 07    | India payroll: structures, earnings, deductions, EPF, ESI, PT, TDS, regimes, runs, payslips, arrears, approvals, bank files, F&F                                                                                                                          | ✅ pushed `d454f0e`                                         |
 | 08    | Expenses, assets & travel: claims, reimbursements, OCR, asset allocation/return, travel requests/approvals/settlements                                                                                                                                    | 🟡 verified locally                                         |
-| 09    | Performance & learning: cycles, OKRs, goals, KPIs, feedback, 360, training, learning paths, certifications, engagement                                                                                                                                    | ⏳                                                          |
-| 10    | Documents, helpdesk & workflows: document management, templates, e-signature integration, ticketing, SLA, knowledge base, workflow engine, approval designer, escalation, delegation                                                                      | ⏳                                                          |
-| 11    | Advanced AI platform: HR assistant, recruitment AI, document intelligence, OCR, embeddings, RAG, agents, workforce insights, automation, cost monitoring, AI security, evaluation                                                                         | ⏳                                                          |
-| 12    | Analytics & reporting: dashboards, employee/payroll/attendance/recruitment/attrition/performance analytics, report builder, export, scheduled reports, AI summaries                                                                                       | ⏳                                                          |
-| 13    | Complete React Native app: employee & manager apps, attendance, leave, payslips, expenses, documents, notifications, approvals, push, offline data, mobile security                                                                                       | ⏳                                                          |
-| 14    | Integrations & production: email, SMS, WhatsApp, banking, biometric, calendar, accounting, e-signature, webhooks, production Docker, CI/CD, monitoring, logging, security audit, performance testing, backup & recovery, deployment                       | ⏳                                                          |
+| 09    | Performance & learning: cycles, OKRs, goals, KPIs, feedback, 360, training, learning paths, certifications, engagement                                                                                                                                    | 🟡 in progress (started 2026-11-24)                         |
+| 10    | Clients & projects: clients, projects, features/epics, stories, tasks, bugs, assignments, sprints & boards, timesheets, client billing, client portal (owner request 2026-11-24)                                                                          | ⏳                                                          |
+| 11    | Documents, helpdesk & workflows: document management, templates, e-signature integration, ticketing, SLA, knowledge base, workflow engine, approval designer, escalation, delegation                                                                      | ⏳                                                          |
+| 12    | Advanced AI platform: HR assistant, recruitment AI, document intelligence, OCR, embeddings, RAG, agents, workforce insights, automation, cost monitoring, AI security, evaluation                                                                         | ⏳                                                          |
+| 13    | Analytics & reporting: dashboards, employee/payroll/attendance/recruitment/attrition/performance analytics, report builder, export, scheduled reports, AI summaries                                                                                       | ⏳                                                          |
+| 14    | Complete React Native app: employee & manager apps, attendance, leave, payslips, expenses, documents, notifications, approvals, push, offline data, mobile security                                                                                       | ⏳                                                          |
+| 15    | Integrations & production: email, SMS, WhatsApp, banking, biometric, calendar, accounting, e-signature, webhooks, production Docker, CI/CD, monitoring, logging, security audit, performance testing, backup & recovery, deployment                       | ⏳                                                          |
 
 ## Carried forward from Phase 01
 
@@ -37,50 +42,59 @@ approval before the next phase starts.
 - Mobile: no organization screens yet (holiday list for employees planned with Phase 05/13).
 - Effective-dated structure history (e.g. department re-parenting over time) is not modelled;
   employee assignment history in Phase 04 records who belonged where and when.
-- Dedicated worker process, Redis-backed rate limiting store, Nginx, monitoring — Phase 14.
+- Dedicated worker process, Redis-backed rate limiting store, Nginx, monitoring — Phase 15.
 
 ## Carried forward from Phase 04
 
 - Salary structures and salary-revision history — Phase 07 (payroll).
-- Approval workflow for employee self-service changes — Phase 10 (workflow engine); Phase 04
+- Approval workflow for employee self-service changes — Phase 11 (workflow engine); Phase 04
   applies self-edits directly for contact and background data only.
-- Document malware scanning and retention policies — Phase 10 / 14.
+- Document malware scanning and retention policies — Phase 11 / 15.
 - Statutory registrations beyond PAN/UAN (ESIC, PT, LWF) — Phase 07; Aadhaar deliberately not
   collected (ADR-011).
 - Bulk employee import (CSV) and directory export — with the DataTable export work.
-- Mobile: read-only "My profile" only; editing and documents on mobile — Phase 13.
+- Mobile: read-only "My profile" only; editing and documents on mobile — Phase 14.
 
 ## Carried forward from Phase 05
 
 - Overtime approval and compensatory off; leave encashment and final settlement — Phase 07.
-- Multi-level approval chains, delegation, escalation — Phase 10 (workflow engine).
-- Biometric device push integrations, branch geofencing — Phase 14; mobile location capture
-  and QR scanning in the app — Phase 13.
-- Roster planning UI (the API supports day overrides), attendance analytics dashboards — Phase 12.
+- Multi-level approval chains, delegation, escalation — Phase 11 (workflow engine).
+- Biometric device push integrations, branch geofencing — Phase 15; mobile location capture
+  and QR scanning in the app — Phase 14.
+- Roster planning UI (the API supports day overrides), attendance analytics dashboards — Phase 13.
 - Leave types: UI for employment-type applicability (API supports it).
 
 ## Carried forward from Phase 06
 
-- AI resume parsing, skill extraction, candidate summaries and JD assistance (Phase 11; never
+- AI resume parsing, skill extraction, candidate summaries and JD assistance (Phase 12; never
   auto-reject).
-- Offer letters as generated documents, e-signature and candidate e-mails (Phase 10).
+- Offer letters as generated documents, e-signature and candidate e-mails (Phase 11).
 - Department-scoped recruitment permissions (Phase 03 scope model).
 - Candidate data retention/erasure automation (DPDP) built on recorded consent.
-- Recruitment analytics (Phase 12); mobile recruitment/onboarding screens (Phase 13).
+- Recruitment analytics (Phase 13); mobile recruitment/onboarding screens (Phase 14).
 
 ## Carried forward from Phase 07
 
 - Statutory returns and challans (EPF ECR, ESI returns, Form 24Q, Form 16) and LWF.
-- Bank-specific payment file formats and payment status reconciliation (Phase 14 integrations).
-- Generated PDF payslips and settlement letters (Phase 10 documents).
-- Investment proof verification workflow and declaration lock dates (Phase 10 workflows).
-- Off-cycle runs (bonus, correction) and payroll variance analytics (Phase 12).
-- Batched/background calculation for very large runs (BullMQ), and mobile payslips (Phase 13).
+- Bank-specific payment file formats and payment status reconciliation (Phase 15 integrations).
+- Generated PDF payslips and settlement letters (Phase 11 documents).
+- Investment proof verification workflow and declaration lock dates (Phase 11 workflows).
+- Off-cycle runs (bonus, correction) and payroll variance analytics (Phase 13).
+- Batched/background calculation for very large runs (BullMQ), and mobile payslips (Phase 14).
+
+## Carried forward from Phase 09
+
+- 9-box talent grid, succession plans and career paths (Phase 13 analytics with the review data).
+- Continuous 1:1 notes, review reminders and nudges (Phase 11 workflows, Phase 15 notifications).
+- SCORM/xAPI packages, video hosting and external course catalogues (Phase 15 integrations).
+- AI review summaries, goal suggestions and survey comment themes (Phase 12, with guardrails).
+- Linking review outcomes to salary revisions — today promotion is a recorded recommendation only.
+- Mobile goals, recognition and survey answering (Phase 14).
 
 ## Carried forward from Phase 08
 
-- OCR and data extraction from receipts and bills (Phase 11 document intelligence).
-- Configurable multi-level approval chains and delegation (Phase 10 workflow engine).
-- Exchange-rate feeds, corporate cards, booking engines and accounting exports (Phase 14).
-- Expense, travel and asset analytics (Phase 12); mobile claim capture with camera (Phase 13).
+- OCR and data extraction from receipts and bills (Phase 12 document intelligence).
+- Configurable multi-level approval chains and delegation (Phase 11 workflow engine).
+- Exchange-rate feeds, corporate cards, booking engines and accounting exports (Phase 15).
+- Expense, travel and asset analytics (Phase 13); mobile claim capture with camera (Phase 14).
 - Asset audits / physical verification cycles and QR asset labels.

@@ -95,6 +95,19 @@ model Organization {
   assetCategories     AssetCategory[]
   assets              Asset[]
   softwareLicenses    SoftwareLicense[]
+  ratingScales        RatingScale[]
+  competencies        Competency[]
+  reviewTemplates     ReviewTemplate[]
+  reviewCycles        ReviewCycle[]
+  goals               Goal[]
+  courses             Course[]
+  learningPaths       LearningPath[]
+  surveys             Survey[]
+  recognitionBadges   RecognitionBadge[]
+  rewards             Reward[]
+  announcements       Announcement[]
+  companyEvents       CompanyEvent[]
+  suggestions         Suggestion[]
   employees           Employee[]
   employmentRecords   EmploymentRecord[]
 
@@ -956,42 +969,53 @@ model Employee {
   createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization       Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  membership         Membership?                @relation(fields: [membershipId], references: [id], onDelete: SetNull)
-  employmentRecords  EmploymentRecord[]         @relation("EmployeeRecords")
-  managedRecords     EmploymentRecord[]         @relation("ManagerRecords")
-  statutoryIds       EmployeeStatutoryIds?
-  addresses          EmployeeAddress[]
-  emergencyContacts  EmployeeEmergencyContact[]
-  familyMembers      EmployeeFamilyMember[]
-  education          EmployeeEducation[]
-  experience         EmployeeExperience[]
-  certifications     EmployeeCertification[]
-  skills             EmployeeSkill[]
-  bankAccounts       EmployeeBankAccount[]
-  documents          EmployeeDocument[]
-  shiftAssignments   ShiftAssignment[]
-  rosterEntries      RosterEntry[]
-  punches            AttendancePunch[]
-  regularizations    AttendanceRegularization[]
-  leaveRequests      LeaveRequest[]             @relation("LeaveRequests")
-  leaveApprovals     LeaveRequest[]             @relation("LeaveApprovals")
-  leaveLedger        LeaveLedgerEntry[]
-  hiringOpenings     JobOpening[]               @relation("HiringManager")
-  hiredCandidate     Candidate?                 @relation("HiredCandidate")
-  panelSeats         InterviewPanelist[]        @relation("Panelist")
-  onboardingPlans    OnboardingPlan[]           @relation("OnboardingPlans")
-  onboardingTasks    OnboardingTask[]           @relation("OnboardingAssignee")
-  salaries           EmployeeSalary[]
-  payrollProfile     EmployeePayrollProfile?
-  taxDeclarations    TaxDeclaration[]
-  payrollAdjustments PayrollAdjustment[]
-  payrollResults     PayrollResult[]
-  settlements        PayrollSettlement[]
-  expenseClaims      ExpenseClaim[]             @relation("ExpenseClaims")
-  travelRequests     TravelRequest[]            @relation("TravelRequests")
-  assetAllocations   AssetAllocation[]          @relation("AssetAllocations")
-  licenseSeats       LicenseAssignment[]        @relation("LicenseSeats")
+  organization         Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  membership           Membership?                @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  employmentRecords    EmploymentRecord[]         @relation("EmployeeRecords")
+  managedRecords       EmploymentRecord[]         @relation("ManagerRecords")
+  statutoryIds         EmployeeStatutoryIds?
+  addresses            EmployeeAddress[]
+  emergencyContacts    EmployeeEmergencyContact[]
+  familyMembers        EmployeeFamilyMember[]
+  education            EmployeeEducation[]
+  experience           EmployeeExperience[]
+  certifications       EmployeeCertification[]
+  skills               EmployeeSkill[]
+  bankAccounts         EmployeeBankAccount[]
+  documents            EmployeeDocument[]
+  shiftAssignments     ShiftAssignment[]
+  rosterEntries        RosterEntry[]
+  punches              AttendancePunch[]
+  regularizations      AttendanceRegularization[]
+  leaveRequests        LeaveRequest[]             @relation("LeaveRequests")
+  leaveApprovals       LeaveRequest[]             @relation("LeaveApprovals")
+  leaveLedger          LeaveLedgerEntry[]
+  hiringOpenings       JobOpening[]               @relation("HiringManager")
+  hiredCandidate       Candidate?                 @relation("HiredCandidate")
+  panelSeats           InterviewPanelist[]        @relation("Panelist")
+  onboardingPlans      OnboardingPlan[]           @relation("OnboardingPlans")
+  onboardingTasks      OnboardingTask[]           @relation("OnboardingAssignee")
+  salaries             EmployeeSalary[]
+  payrollProfile       EmployeePayrollProfile?
+  taxDeclarations      TaxDeclaration[]
+  payrollAdjustments   PayrollAdjustment[]
+  payrollResults       PayrollResult[]
+  settlements          PayrollSettlement[]
+  expenseClaims        ExpenseClaim[]             @relation("ExpenseClaims")
+  travelRequests       TravelRequest[]            @relation("TravelRequests")
+  assetAllocations     AssetAllocation[]          @relation("AssetAllocations")
+  licenseSeats         LicenseAssignment[]        @relation("LicenseSeats")
+  reviewParticipations ReviewParticipant[]        @relation("ReviewParticipations")
+  reviewsGiven         ReviewResponse[]           @relation("ReviewsGiven")
+  goals                Goal[]                     @relation("EmployeeGoals")
+  improvementPlans     ImprovementPlan[]          @relation("ImprovementPlans")
+  enrollments          Enrollment[]               @relation("Enrollments")
+  surveyInvitations    SurveyInvitation[]         @relation("SurveyInvitations")
+  recognitionsGiven    Recognition[]              @relation("RecognitionsGiven")
+  recognitionsReceived Recognition[]              @relation("RecognitionsReceived")
+  redemptions          RewardRedemption[]         @relation("Redemptions")
+  announcementReads    AnnouncementRead[]         @relation("AnnouncementReads")
+  eventRsvps           EventRsvp[]                @relation("EventRsvps")
 
   @@unique([organizationId, employeeNumber])
   @@unique([organizationId, id])
@@ -2730,4 +2754,739 @@ model LicenseAssignment {
   @@index([organizationId, licenseId])
   @@index([organizationId, employeeId])
   @@map("license_assignments")
+}
+
+// =============================================================================================
+// Phase 09 — Performance, learning and engagement (ADR-016). Scales, weights, pass marks,
+// anonymity minimums and points are organization configuration; none seeded.
+// =============================================================================================
+
+enum ReviewCycleStatus {
+  DRAFT
+  OPEN
+  CALIBRATION
+  CLOSED
+}
+
+enum ReviewerRole {
+  SELF
+  MANAGER
+  PEER
+  UPWARD
+}
+
+enum ReviewResponseStatus {
+  PENDING
+  SUBMITTED
+  DECLINED
+}
+
+enum PromotionRecommendation {
+  NONE
+  RECOMMEND
+  STRONGLY_RECOMMEND
+}
+
+enum GoalOwnerType {
+  EMPLOYEE
+  DEPARTMENT
+  ORGANIZATION
+}
+
+enum GoalKind {
+  GOAL
+  OBJECTIVE
+  KEY_RESULT
+  KPI
+}
+
+enum GoalStatus {
+  ACTIVE
+  ACHIEVED
+  MISSED
+  CANCELLED
+}
+
+enum PipStatus {
+  ACTIVE
+  PASSED
+  FAILED
+  CANCELLED
+}
+
+enum CourseFormat {
+  ONLINE
+  VIDEO
+  DOCUMENT
+  CLASSROOM
+  EXTERNAL
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CourseModuleType {
+  CONTENT
+  QUIZ
+}
+
+enum EnrollmentSource {
+  SELF
+  ASSIGNED
+  PATH
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  IN_PROGRESS
+  COMPLETED
+  WITHDRAWN
+}
+
+enum SurveyKind {
+  SURVEY
+  PULSE
+}
+
+enum SurveyStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum RedemptionStatus {
+  PENDING
+  FULFILLED
+  REJECTED
+}
+
+enum RsvpResponse {
+  GOING
+  MAYBE
+  NOT_GOING
+}
+
+enum SuggestionStatus {
+  NEW
+  UNDER_REVIEW
+  ACCEPTED
+  IMPLEMENTED
+  DECLINED
+}
+
+// ---------------------------------------------------------------------------------- performance
+
+model RatingScale {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String       @db.VarChar(100)
+  /// [{value, label, description}] ascending.
+  points         Json
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  templates    ReviewTemplate[]
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, id])
+  @@map("rating_scales")
+}
+
+model Competency {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  code           String       @db.VarChar(30)
+  name           String       @db.VarChar(100)
+  description    String?      @db.VarChar(1000)
+  category       String?      @db.VarChar(60)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@map("competencies")
+}
+
+model ReviewTemplate {
+  id                 String       @id @default(uuid(7)) @db.Uuid
+  organizationId     String       @map("organization_id") @db.Uuid
+  name               String       @db.VarChar(100)
+  ratingScaleId      String       @map("rating_scale_id") @db.Uuid
+  goalsWeightPercent Decimal      @map("goals_weight_percent") @db.Decimal(5, 2)
+  /// [{competencyId, weight}]
+  competencies       Json         @default("[]")
+  /// [{id, text, required}]
+  questions          Json         @default("[]")
+  includeSelf        Boolean      @map("include_self")
+  includeManager     Boolean      @map("include_manager")
+  peerMin            Int          @map("peer_min") @db.SmallInt
+  peerMax            Int          @map("peer_max") @db.SmallInt
+  includeUpward      Boolean      @map("include_upward")
+  anonymityMinimum   Int          @map("anonymity_minimum") @db.SmallInt
+  status             RecordStatus @default(ACTIVE)
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  ratingScale  RatingScale   @relation(fields: [organizationId, ratingScaleId], references: [organizationId, id], onDelete: Restrict)
+  cycles       ReviewCycle[]
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, id])
+  @@map("review_templates")
+}
+
+model ReviewCycle {
+  id                   String            @id @default(uuid(7)) @db.Uuid
+  organizationId       String            @map("organization_id") @db.Uuid
+  name                 String            @db.VarChar(120)
+  templateId           String            @map("template_id") @db.Uuid
+  /// Template and scale as they were at launch (later template edits never change a cycle).
+  templateSnapshot     Json?             @map("template_snapshot")
+  periodStart          DateTime          @map("period_start") @db.Date
+  periodEnd            DateTime          @map("period_end") @db.Date
+  selfDueOn            DateTime?         @map("self_due_on") @db.Date
+  managerDueOn         DateTime?         @map("manager_due_on") @db.Date
+  audienceCompanyId    String?           @map("audience_company_id") @db.Uuid
+  audienceDepartmentId String?           @map("audience_department_id") @db.Uuid
+  status               ReviewCycleStatus @default(DRAFT)
+  launchedAt           DateTime?         @map("launched_at") @db.Timestamptz(6)
+  closedAt             DateTime?         @map("closed_at") @db.Timestamptz(6)
+  createdByUserId      String?           @map("created_by_user_id") @db.Uuid
+  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  template     ReviewTemplate      @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict)
+  participants ReviewParticipant[]
+  goals        Goal[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, status])
+  @@map("review_cycles")
+}
+
+model ReviewParticipant {
+  id                     String                  @id @default(uuid(7)) @db.Uuid
+  organizationId         String                  @map("organization_id") @db.Uuid
+  cycleId                String                  @map("cycle_id") @db.Uuid
+  employeeId             String                  @map("employee_id") @db.Uuid
+  /// Reporting manager at launch.
+  managerEmployeeId      String?                 @map("manager_employee_id") @db.Uuid
+  computedScore          Decimal?                @map("computed_score") @db.Decimal(6, 2)
+  computedRating         Decimal?                @map("computed_rating") @db.Decimal(6, 2)
+  finalRating            Decimal?                @map("final_rating") @db.Decimal(6, 2)
+  calibrationReason      String?                 @map("calibration_reason") @db.VarChar(1000)
+  calibratedByUserId     String?                 @map("calibrated_by_user_id") @db.Uuid
+  calibratedAt           DateTime?               @map("calibrated_at") @db.Timestamptz(6)
+  promotion              PromotionRecommendation @default(NONE)
+  promotionJustification String?                 @map("promotion_justification") @db.VarChar(2000)
+  acknowledgedAt         DateTime?               @map("acknowledged_at") @db.Timestamptz(6)
+  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cycle     ReviewCycle      @relation(fields: [organizationId, cycleId], references: [organizationId, id], onDelete: Restrict)
+  employee  Employee         @relation("ReviewParticipations", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+  responses ReviewResponse[]
+
+  @@unique([cycleId, employeeId])
+  @@unique([organizationId, id])
+  @@index([organizationId, managerEmployeeId])
+  @@map("review_participants")
+}
+
+model ReviewResponse {
+  id                 String               @id @default(uuid(7)) @db.Uuid
+  organizationId     String               @map("organization_id") @db.Uuid
+  participantId      String               @map("participant_id") @db.Uuid
+  reviewerEmployeeId String               @map("reviewer_employee_id") @db.Uuid
+  role               ReviewerRole
+  status             ReviewResponseStatus @default(PENDING)
+  /// {competencies:[{competencyId, rating, comment}], goals:[...], answers:[...], overallComment}
+  content            Json                 @default("{}")
+  nominatedByUserId  String?              @map("nominated_by_user_id") @db.Uuid
+  submittedAt        DateTime?            @map("submitted_at") @db.Timestamptz(6)
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  participant ReviewParticipant @relation(fields: [organizationId, participantId], references: [organizationId, id], onDelete: Cascade)
+  reviewer    Employee          @relation("ReviewsGiven", fields: [organizationId, reviewerEmployeeId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([participantId, reviewerEmployeeId, role])
+  @@index([organizationId, reviewerEmployeeId, status])
+  @@map("review_responses")
+}
+
+model Goal {
+  id              String        @id @default(uuid(7)) @db.Uuid
+  organizationId  String        @map("organization_id") @db.Uuid
+  ownerType       GoalOwnerType @map("owner_type")
+  employeeId      String?       @map("employee_id") @db.Uuid
+  departmentId    String?       @map("department_id") @db.Uuid
+  parentId        String?       @map("parent_id") @db.Uuid
+  cycleId         String?       @map("cycle_id") @db.Uuid
+  kind            GoalKind
+  title           String        @db.VarChar(200)
+  description     String?       @db.VarChar(2000)
+  weight          Decimal       @default(1) @db.Decimal(8, 2)
+  measureStart    Decimal?      @map("measure_start") @db.Decimal(18, 4)
+  measureTarget   Decimal?      @map("measure_target") @db.Decimal(18, 4)
+  measureCurrent  Decimal?      @map("measure_current") @db.Decimal(18, 4)
+  unit            String?       @db.VarChar(20)
+  progress        Decimal       @default(0) @db.Decimal(5, 2)
+  status          GoalStatus    @default(ACTIVE)
+  dueOn           DateTime?     @map("due_on") @db.Date
+  createdByUserId String?       @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  employee     Employee?     @relation("EmployeeGoals", fields: [employeeId], references: [id], onDelete: Restrict)
+  parent       Goal?         @relation("GoalTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children     Goal[]        @relation("GoalTree")
+  cycle        ReviewCycle?  @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  checkIns     GoalCheckIn[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, ownerType, employeeId])
+  @@index([organizationId, parentId])
+  @@map("goals")
+}
+
+model GoalCheckIn {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  goalId         String   @map("goal_id") @db.Uuid
+  progress       Decimal  @db.Decimal(5, 2)
+  current        Decimal? @db.Decimal(18, 4)
+  note           String   @db.VarChar(1000)
+  authorUserId   String?  @map("author_user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  goal Goal @relation(fields: [organizationId, goalId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, goalId, createdAt])
+  @@map("goal_check_ins")
+}
+
+model ImprovementPlan {
+  id                String    @id @default(uuid(7)) @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  employeeId        String    @map("employee_id") @db.Uuid
+  managerEmployeeId String?   @map("manager_employee_id") @db.Uuid
+  startDate         DateTime  @map("start_date") @db.Date
+  endDate           DateTime  @map("end_date") @db.Date
+  reason            String    @db.VarChar(2000)
+  /// [{text, measure}]
+  objectives        Json
+  status            PipStatus @default(ACTIVE)
+  outcomeNote       String?   @map("outcome_note") @db.VarChar(2000)
+  closedAt          DateTime? @map("closed_at") @db.Timestamptz(6)
+  createdByUserId   String?   @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  employee Employee     @relation("ImprovementPlans", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+  checkIns PipCheckIn[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, employeeId])
+  @@map("improvement_plans")
+}
+
+model PipCheckIn {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  planId         String   @map("plan_id") @db.Uuid
+  note           String   @db.VarChar(2000)
+  authorUserId   String?  @map("author_user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  plan ImprovementPlan @relation(fields: [organizationId, planId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, planId, createdAt])
+  @@map("pip_check_ins")
+}
+
+// ---------------------------------------------------------------------------------- learning
+
+model Course {
+  id                          String       @id @default(uuid(7)) @db.Uuid
+  organizationId              String       @map("organization_id") @db.Uuid
+  code                        String       @db.VarChar(30)
+  title                       String       @db.VarChar(200)
+  description                 String?      @db.VarChar(5000)
+  format                      CourseFormat
+  durationMinutes             Int?         @map("duration_minutes")
+  passPercent                 Int          @default(0) @map("pass_percent") @db.SmallInt
+  certificationValidityMonths Int?         @map("certification_validity_months") @db.SmallInt
+  skills                      String[]     @default([]) @db.VarChar(60)
+  status                      CourseStatus @default(DRAFT)
+  createdByUserId             String?      @map("created_by_user_id") @db.Uuid
+  createdAt                   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  modules      CourseModule[]
+  paths        LearningPathCourse[]
+  enrollments  Enrollment[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@map("courses")
+}
+
+model CourseModule {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  courseId       String           @map("course_id") @db.Uuid
+  sortOrder      Int              @map("sort_order") @db.SmallInt
+  title          String           @db.VarChar(200)
+  type           CourseModuleType
+  content        String?          @db.VarChar(20000)
+  url            String?          @db.VarChar(2000)
+  /// Quiz questions including correct answers (never returned to learners).
+  questions      Json             @default("[]")
+
+  course   Course        @relation(fields: [organizationId, courseId], references: [organizationId, id], onDelete: Cascade)
+  attempts QuizAttempt[]
+
+  @@unique([courseId, sortOrder])
+  @@unique([organizationId, id])
+  @@map("course_modules")
+}
+
+model LearningPath {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String       @db.VarChar(120)
+  description    String?      @db.VarChar(2000)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  courses      LearningPathCourse[]
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, id])
+  @@map("learning_paths")
+}
+
+model LearningPathCourse {
+  organizationId String @map("organization_id") @db.Uuid
+  pathId         String @map("path_id") @db.Uuid
+  courseId       String @map("course_id") @db.Uuid
+  sortOrder      Int    @map("sort_order") @db.SmallInt
+
+  path   LearningPath @relation(fields: [organizationId, pathId], references: [organizationId, id], onDelete: Cascade)
+  course Course       @relation(fields: [organizationId, courseId], references: [organizationId, id], onDelete: Restrict)
+
+  @@id([pathId, courseId])
+  @@map("learning_path_courses")
+}
+
+model Enrollment {
+  id               String           @id @default(uuid(7)) @db.Uuid
+  organizationId   String           @map("organization_id") @db.Uuid
+  courseId         String           @map("course_id") @db.Uuid
+  employeeId       String           @map("employee_id") @db.Uuid
+  source           EnrollmentSource
+  pathId           String?          @map("path_id") @db.Uuid
+  assignedByUserId String?          @map("assigned_by_user_id") @db.Uuid
+  dueOn            DateTime?        @map("due_on") @db.Date
+  status           EnrollmentStatus @default(ENROLLED)
+  completedModules String[]         @default([]) @map("completed_modules") @db.Uuid
+  scorePercent     Decimal?         @map("score_percent") @db.Decimal(5, 2)
+  completedAt      DateTime?        @map("completed_at") @db.Timestamptz(6)
+  certificationId  String?          @map("certification_id") @db.Uuid
+  feedbackRating   Int?             @map("feedback_rating") @db.SmallInt
+  feedbackComment  String?          @map("feedback_comment") @db.VarChar(2000)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  course   Course        @relation(fields: [organizationId, courseId], references: [organizationId, id], onDelete: Restrict)
+  employee Employee      @relation("Enrollments", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+  attempts QuizAttempt[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, employeeId, status])
+  @@index([organizationId, courseId])
+  @@map("enrollments")
+}
+
+model QuizAttempt {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  enrollmentId   String   @map("enrollment_id") @db.Uuid
+  moduleId       String   @map("module_id") @db.Uuid
+  answers        Json
+  scorePercent   Decimal  @map("score_percent") @db.Decimal(5, 2)
+  passed         Boolean
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  enrollment Enrollment   @relation(fields: [organizationId, enrollmentId], references: [organizationId, id], onDelete: Restrict)
+  module     CourseModule @relation(fields: [organizationId, moduleId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, enrollmentId, moduleId])
+  @@map("quiz_attempts")
+}
+
+// ---------------------------------------------------------------------------------- engagement
+
+model Survey {
+  id                   String       @id @default(uuid(7)) @db.Uuid
+  organizationId       String       @map("organization_id") @db.Uuid
+  title                String       @db.VarChar(200)
+  description          String?      @db.VarChar(2000)
+  kind                 SurveyKind
+  anonymous            Boolean
+  minimumGroupSize     Int          @map("minimum_group_size") @db.SmallInt
+  audienceCompanyId    String?      @map("audience_company_id") @db.Uuid
+  audienceDepartmentId String?      @map("audience_department_id") @db.Uuid
+  opensAt              DateTime     @map("opens_at") @db.Timestamptz(6)
+  closesAt             DateTime     @map("closes_at") @db.Timestamptz(6)
+  /// [{id, type, text, options, required}]
+  questions            Json
+  status               SurveyStatus @default(DRAFT)
+  createdByUserId      String?      @map("created_by_user_id") @db.Uuid
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invitations  SurveyInvitation[]
+  responses    SurveyResponse[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, status, closesAt])
+  @@map("surveys")
+}
+
+/// Who was asked and whether they responded — never linked to the answers of anonymous surveys.
+model SurveyInvitation {
+  organizationId String    @map("organization_id") @db.Uuid
+  surveyId       String    @map("survey_id") @db.Uuid
+  employeeId     String    @map("employee_id") @db.Uuid
+  respondedAt    DateTime? @map("responded_at") @db.Timestamptz(6)
+
+  survey   Survey   @relation(fields: [organizationId, surveyId], references: [organizationId, id], onDelete: Cascade)
+  employee Employee @relation("SurveyInvitations", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+
+  @@id([surveyId, employeeId])
+  @@index([organizationId, employeeId])
+  @@map("survey_invitations")
+}
+
+model SurveyResponse {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  surveyId       String   @map("survey_id") @db.Uuid
+  /// NULL for anonymous surveys (enforced by trigger).
+  employeeId     String?  @map("employee_id") @db.Uuid
+  /// Department at submission, for breakdowns shown only above the minimum group size.
+  departmentId   String?  @map("department_id") @db.Uuid
+  answers        Json
+  submittedAt    DateTime @default(now()) @map("submitted_at") @db.Timestamptz(6)
+
+  survey Survey @relation(fields: [organizationId, surveyId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([organizationId, surveyId])
+  @@map("survey_responses")
+}
+
+model RecognitionBadge {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String       @db.VarChar(60)
+  description    String?      @db.VarChar(300)
+  points         Int          @default(0)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  recognitions Recognition[]
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, id])
+  @@map("recognition_badges")
+}
+
+model Recognition {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  fromEmployeeId String   @map("from_employee_id") @db.Uuid
+  toEmployeeId   String   @map("to_employee_id") @db.Uuid
+  badgeId        String   @map("badge_id") @db.Uuid
+  /// Badge points at the time of recognition.
+  points         Int
+  message        String   @db.VarChar(1000)
+  public         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  badge RecognitionBadge @relation(fields: [organizationId, badgeId], references: [organizationId, id], onDelete: Restrict)
+  from  Employee         @relation("RecognitionsGiven", fields: [organizationId, fromEmployeeId], references: [organizationId, id], onDelete: Restrict)
+  to    Employee         @relation("RecognitionsReceived", fields: [organizationId, toEmployeeId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, toEmployeeId])
+  @@index([organizationId, createdAt])
+  @@map("recognitions")
+}
+
+model Reward {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String       @db.VarChar(120)
+  description    String?      @db.VarChar(1000)
+  pointsCost     Int          @map("points_cost")
+  stock          Int?
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  redemptions  RewardRedemption[]
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, id])
+  @@map("rewards")
+}
+
+model RewardRedemption {
+  id              String           @id @default(uuid(7)) @db.Uuid
+  organizationId  String           @map("organization_id") @db.Uuid
+  rewardId        String           @map("reward_id") @db.Uuid
+  employeeId      String           @map("employee_id") @db.Uuid
+  pointsCost      Int              @map("points_cost")
+  status          RedemptionStatus @default(PENDING)
+  note            String?          @db.VarChar(500)
+  decidedByUserId String?          @map("decided_by_user_id") @db.Uuid
+  decidedAt       DateTime?        @map("decided_at") @db.Timestamptz(6)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  reward   Reward   @relation(fields: [organizationId, rewardId], references: [organizationId, id], onDelete: Restrict)
+  employee Employee @relation("Redemptions", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, employeeId])
+  @@index([organizationId, status])
+  @@map("reward_redemptions")
+}
+
+model Announcement {
+  id                      String    @id @default(uuid(7)) @db.Uuid
+  organizationId          String    @map("organization_id") @db.Uuid
+  title                   String    @db.VarChar(200)
+  body                    String    @db.VarChar(20000)
+  audienceCompanyId       String?   @map("audience_company_id") @db.Uuid
+  audienceDepartmentId    String?   @map("audience_department_id") @db.Uuid
+  pinned                  Boolean   @default(false)
+  requiresAcknowledgement Boolean   @default(false) @map("requires_acknowledgement")
+  publishAt               DateTime  @default(now()) @map("publish_at") @db.Timestamptz(6)
+  expiresAt               DateTime? @map("expires_at") @db.Timestamptz(6)
+  createdByUserId         String?   @map("created_by_user_id") @db.Uuid
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  reads        AnnouncementRead[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, publishAt])
+  @@map("announcements")
+}
+
+model AnnouncementRead {
+  organizationId String    @map("organization_id") @db.Uuid
+  announcementId String    @map("announcement_id") @db.Uuid
+  employeeId     String    @map("employee_id") @db.Uuid
+  readAt         DateTime  @default(now()) @map("read_at") @db.Timestamptz(6)
+  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(6)
+
+  announcement Announcement @relation(fields: [organizationId, announcementId], references: [organizationId, id], onDelete: Cascade)
+  employee     Employee     @relation("AnnouncementReads", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+
+  @@id([announcementId, employeeId])
+  @@map("announcement_reads")
+}
+
+model CompanyEvent {
+  id                   String    @id @default(uuid(7)) @db.Uuid
+  organizationId       String    @map("organization_id") @db.Uuid
+  title                String    @db.VarChar(200)
+  description          String?   @db.VarChar(5000)
+  startsAt             DateTime  @map("starts_at") @db.Timestamptz(6)
+  endsAt               DateTime  @map("ends_at") @db.Timestamptz(6)
+  location             String?   @db.VarChar(300)
+  capacity             Int?
+  audienceCompanyId    String?   @map("audience_company_id") @db.Uuid
+  audienceDepartmentId String?   @map("audience_department_id") @db.Uuid
+  cancelledAt          DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  createdByUserId      String?   @map("created_by_user_id") @db.Uuid
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  rsvps        EventRsvp[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, startsAt])
+  @@map("company_events")
+}
+
+model EventRsvp {
+  organizationId String       @map("organization_id") @db.Uuid
+  eventId        String       @map("event_id") @db.Uuid
+  employeeId     String       @map("employee_id") @db.Uuid
+  response       RsvpResponse
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event    CompanyEvent @relation(fields: [organizationId, eventId], references: [organizationId, id], onDelete: Cascade)
+  employee Employee     @relation("EventRsvps", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Cascade)
+
+  @@id([eventId, employeeId])
+  @@map("event_rsvps")
+}
+
+model Suggestion {
+  id                String           @id @default(uuid(7)) @db.Uuid
+  organizationId    String           @map("organization_id") @db.Uuid
+  /// NULL when anonymous (enforced by CHECK).
+  authorEmployeeId  String?          @map("author_employee_id") @db.Uuid
+  anonymous         Boolean          @default(false)
+  title             String           @db.VarChar(200)
+  body              String           @db.VarChar(5000)
+  category          String?          @db.VarChar(60)
+  status            SuggestionStatus @default(NEW)
+  response          String?          @db.VarChar(2000)
+  respondedByUserId String?          @map("responded_by_user_id") @db.Uuid
+  respondedAt       DateTime?        @map("responded_at") @db.Timestamptz(6)
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  votes        SuggestionVote[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, status])
+  @@map("suggestions")
+}
+
+model SuggestionVote {
+  organizationId String   @map("organization_id") @db.Uuid
+  suggestionId   String   @map("suggestion_id") @db.Uuid
+  employeeId     String   @map("employee_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  suggestion Suggestion @relation(fields: [organizationId, suggestionId], references: [organizationId, id], onDelete: Cascade)
+
+  @@id([suggestionId, employeeId])
+  @@map("suggestion_votes")
 }

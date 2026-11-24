@@ -1,6 +1,17 @@
 import { PERMISSIONS, type Permission } from '@hrm/shared-types';
 import {
   Activity,
+  Award,
+  BookOpen,
+  Gauge,
+  GraduationCap,
+  Lightbulb,
+  LifeBuoy,
+  PartyPopper,
+  RefreshCcw,
+  Star,
+  Target,
+  Vote,
   BadgeCheck,
   Boxes,
   KeySquare,
@@ -280,6 +291,87 @@ export const navigation: NavSection[] = [
         to: '/assets/licenses',
         icon: KeySquare,
         permission: PERMISSIONS.ASSETS_ASSET_READ,
+      },
+    ],
+  },
+  {
+    label: 'Performance',
+    items: [
+      {
+        label: 'Goals & OKRs',
+        to: '/me/goals',
+        icon: Target,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Reviews',
+        to: '/me/reviews',
+        icon: Star,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Improvement plans',
+        to: '/performance/pips',
+        icon: LifeBuoy,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Review cycles',
+        to: '/performance/cycles',
+        icon: RefreshCcw,
+        permission: PERMISSIONS.PERFORMANCE_CYCLE_MANAGE,
+      },
+      {
+        label: 'Performance setup',
+        to: '/performance/setup',
+        icon: Gauge,
+        permission: PERMISSIONS.PERFORMANCE_CONFIG_MANAGE,
+      },
+    ],
+  },
+  {
+    label: 'Learning',
+    items: [
+      {
+        label: 'My learning',
+        to: '/me/learning',
+        icon: BookOpen,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Training & skills',
+        to: '/learning',
+        icon: GraduationCap,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+    ],
+  },
+  {
+    label: 'Engagement',
+    items: [
+      {
+        label: 'Company',
+        to: '/engagement',
+        icon: PartyPopper,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Surveys',
+        to: '/engagement/surveys',
+        icon: Vote,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Suggestions',
+        to: '/engagement/suggestions',
+        icon: Lightbulb,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Engagement admin',
+        to: '/engagement/admin',
+        icon: Award,
+        permission: PERMISSIONS.ENGAGEMENT_CONTENT_MANAGE,
       },
     ],
   },

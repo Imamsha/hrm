@@ -35,6 +35,26 @@ Integration tests use an isolated database (`hrm_test`), Redis DB 1 and bucket `
 (`TEST_*` variables in `.env.example`). The audit log is append-only, so tests create uniquely
 named tenants instead of cleaning up.
 
+## What is covered (Phase 09)
+
+- **business-rules** (`talent.test.ts`, 11 tests): metric progress (rising and falling targets),
+  weighted roll-up, scale validation and nearest point, weighted review score, distribution,
+  anonymity reveal, cycle moves, quiz grading (multi-answer), course progress, certification
+  expiry, survey validation and aggregation (eNPS, hidden below the minimum), points balance.
+- **validation** (`talent.test.ts`): goals need owners/measures/objectives, template weights and
+  peers, quiz answers within options, survey choice options and dates, rejection reasons.
+- **integration** (`talent.int.test.ts`, 9 tests): template snapshot and launch slots; manager
+  score and calibration; peer anonymity below/above the minimum; closed cycle frozen (direct SQL);
+  goal check-ins rolling up; PIP visibility; course assignment, quiz grading without leaking
+  answers, certification and skills; anonymous survey responses store no employee and hide
+  results below the minimum; recognition points, redemption under locks and rejection refunds;
+  event capacity; anonymous suggestions; tenant isolation.
+- **web** (`features/talent/talent.test.tsx`, 5 tests): navigation gating, KPI check-in body,
+  hidden peer feedback and acknowledgement, quiz answers by option index, anonymous survey notice
+  and answer body.
+- **E2E**: owner linked as an employee creates a KPI goal and checks in (25 %), creates, publishes
+  and answers an anonymous pulse survey, and sees the eNPS result.
+
 ## What is covered (Phase 08)
 
 - **business-rules** (`expenses.test.ts`, 9 tests): currency conversion, blocking vs justified policy

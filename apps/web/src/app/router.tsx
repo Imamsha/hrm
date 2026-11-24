@@ -20,6 +20,21 @@ import {
 } from '@/features/expenses/claim-pages';
 import { MyTripsPage, TravelRequestsPage, TripPage } from '@/features/expenses/travel-pages';
 import {
+  EngagementAdminPage,
+  EngagementHomePage,
+  SuggestionsPage,
+  SurveysPage,
+} from '@/features/talent/engagement-pages';
+import { CoursePage, LearningAdminPage, MyLearningPage } from '@/features/talent/learning-pages';
+import {
+  GoalsPage,
+  MyReviewsPage,
+  PerformanceSetupPage,
+  PipsPage,
+  ReviewCyclesPage,
+  ReviewPage,
+} from '@/features/talent/performance-pages';
+import {
   EmployeePayrollPage,
   MyPayslipsPage,
   MySalaryPage,
@@ -416,6 +431,123 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequirePermission permission={PERMISSIONS.EXPENSES_CATEGORY_MANAGE}>
                     <ExpenseSetupPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/goals',
+                handle: crumb('Goals'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <GoalsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/reviews',
+                handle: crumb('Reviews'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <MyReviewsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'performance/reviews/:id',
+                handle: crumb('Review'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <ReviewPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'performance/cycles',
+                handle: crumb('Review cycles'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PERFORMANCE_CYCLE_MANAGE}>
+                    <ReviewCyclesPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'performance/setup',
+                handle: crumb('Performance setup'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.PERFORMANCE_CONFIG_MANAGE}>
+                    <PerformanceSetupPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'performance/pips',
+                handle: crumb('Improvement plans'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <PipsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/learning',
+                handle: crumb('My learning'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <MyLearningPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'learning/courses/:id',
+                handle: crumb('Course'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <CoursePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'learning',
+                handle: crumb('Learning'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <LearningAdminPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'engagement',
+                handle: crumb('Company'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <EngagementHomePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'engagement/surveys',
+                handle: crumb('Surveys'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <SurveysPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'engagement/suggestions',
+                handle: crumb('Suggestions'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <SuggestionsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'engagement/admin',
+                handle: crumb('Engagement admin'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.ENGAGEMENT_CONTENT_MANAGE}>
+                    <EngagementAdminPage />
                   </RequirePermission>
                 ),
               },

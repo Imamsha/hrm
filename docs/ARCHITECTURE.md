@@ -244,7 +244,22 @@ See ADR-012.
 - Assets and licence seats are allocated under row locks with partial unique indexes; the full
   & final settlement reports anything still with a leaver.
 
-## 18. ADR index
+## 18. Performance, learning and engagement (Phase 09)
+
+- `modules/talent` (performance, learning and engagement services); pure rules in
+  `@hrm/business-rules` (`performance.ts`: metric progress, roll-up, weighted review score,
+  nearest scale point, distribution, cycle moves; `learning-engagement.ts`: quiz grading, course
+  progress, certification expiry, survey aggregation with eNPS and minimum group sizes, points).
+- A review cycle **snapshots its template** at launch, so later template edits never change a
+  running cycle; a closed cycle is frozen by a database trigger.
+- Visibility is computed per viewer: the reviewee never sees peer/upward reviewers, and their
+  feedback is aggregated only after release and at the template's anonymity minimum.
+- Anonymous survey answers and suggestions store no employee id (database CHECK/trigger) and use a
+  random id and a day-only timestamp, so they cannot be re-identified by insert order or time.
+- Correct quiz answers stay server-side for learners; completion issues the certification and
+  records the course skills on the employee.
+
+## 19. ADR index
 
 | ADR                                                                     | Title                                                            |
 | ----------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -263,3 +278,4 @@ See ADR-012.
 | [013](architecture/ADR-013-recruitment-and-onboarding.md)               | Recruitment (ATS), career portal and onboarding                  |
 | [014](architecture/ADR-014-india-payroll.md)                            | India payroll: sourced statutory rules, runs, payslips, F&F      |
 | [015](architecture/ADR-015-expenses-assets-travel.md)                   | Expenses, travel and assets                                      |
+| [016](architecture/ADR-016-performance-learning-engagement.md)          | Performance, learning and engagement                             |

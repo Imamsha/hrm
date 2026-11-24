@@ -68,6 +68,15 @@ other tenants → 404/400).
 | `assets.asset.read`               | View the asset register and licences (Phase 08)                                                                    |
 | `assets.asset.manage`             | Register assets, allocate, return, status, maintenance (Phase 08)                                                  |
 | `assets.license.manage`           | Software licences and seat assignments (Phase 08)                                                                  |
+| `performance.config.manage`       | Rating scales, competencies and review templates (Phase 09)                                                        |
+| `performance.cycle.manage`        | Review cycles: launch, calibration, close, distribution (Phase 09)                                                 |
+| `performance.goal.manage`         | Goals of anyone, department and organization goals (Phase 09)                                                      |
+| `performance.pip.manage`          | Performance improvement plans of anyone (Phase 09)                                                                 |
+| `learning.course.manage`          | Courses, modules, quizzes and learning paths (Phase 09)                                                            |
+| `learning.assignment.manage`      | Assign training to anyone; all enrollments and the skill matrix (Phase 09)                                         |
+| `engagement.survey.manage`        | Surveys and pulse checks, and their (aggregated) results (Phase 09)                                                |
+| `engagement.content.manage`       | Announcements, events, badges, rewards and redemptions (Phase 09)                                                  |
+| `engagement.suggestion.manage`    | Respond to suggestions (Phase 09)                                                                                  |
 | `users.member.read`               | View members (and pending invitations)                                                                             |
 | `users.member.invite`             | Invite people, revoke invitations                                                                                  |
 | `users.member.update`             | Suspend/reactivate members, change role assignments                                                                |
@@ -241,6 +250,25 @@ person from the calculator (API and database CHECK). `/me/salary`, `/me/payslips
 Manager approval of claims and trips is **relationship-based** (the reporting manager at
 submission), not a permission; nobody approves or verifies their own claim or trip.
 `/me/expense-claims`, `/me/trips` and `/me/assets` need `employees.self.access`.
+
+### Phase 09 role grants
+
+| Permission                   | Owner | Admin | HR admin | Finance | Manager | Employee |
+| ---------------------------- | :---: | :---: | :------: | :-----: | :-----: | :------: |
+| performance.config.manage    |   ✓   |   ✓   |    ✓     |         |         |          |
+| performance.cycle.manage     |   ✓   |   ✓   |    ✓     |         |         |          |
+| performance.goal.manage      |   ✓   |   ✓   |    ✓     |         |         |          |
+| performance.pip.manage       |   ✓   |   ✓   |    ✓     |         |         |          |
+| learning.course.manage       |   ✓   |   ✓   |    ✓     |         |         |          |
+| learning.assignment.manage   |   ✓   |   ✓   |    ✓     |         |         |          |
+| engagement.survey.manage     |   ✓   |   ✓   |    ✓     |         |         |          |
+| engagement.content.manage    |   ✓   |   ✓   |    ✓     |         |         |          |
+| engagement.suggestion.manage |   ✓   |   ✓   |    ✓     |         |         |          |
+
+Managers act on their **direct reports** by relationship, not by permission: their goals,
+improvement plans, training assignments, and manager reviews. Everything under `/me/**`, taking
+part in reviews, surveys, recognition, events and suggestions needs `employees.self.access`.
+Nobody recognises themselves; peer and upward feedback is never shown with names.
 
 ## Access scopes
 

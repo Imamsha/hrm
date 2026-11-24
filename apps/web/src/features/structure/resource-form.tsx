@@ -82,6 +82,8 @@ export interface ResourceFormProps {
   statusOptions?: SelectOption[];
   /** Extra fixed values merged into the body (e.g. a change type chosen elsewhere). */
   extra?: Record<string, unknown>;
+  /** Reshapes the flat form body (e.g. into nested objects) before validation and submit. */
+  transform?: (body: Record<string, unknown>) => Record<string, unknown>;
 }
 
 /**
@@ -99,6 +101,7 @@ export function ResourceForm({
   editing = false,
   statusOptions,
   extra,
+  transform,
 }: ResourceFormProps) {
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
@@ -119,8 +122,9 @@ export function ResourceForm({
 
   const onSubmit = form.handleSubmit((raw) => {
     setFormError(null);
-    const body = { ...toPayload(fields, raw, editing), ...(extra ?? {}) };
-    if (!statusOptions) delete body.status;
+    const flat = { ...toPayload(fields, raw, editing), ...(extra ?? {}) };
+    if (!statusOptions) delete flat.status;
+    const body = transform ? transform(flat) : flat;
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
       let unmapped: string | null = null;

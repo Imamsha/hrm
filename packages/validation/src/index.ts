@@ -9,3 +9,4 @@ export * from './time.js';
 export * from './recruitment.js';
 export * from './payroll.js';
 export * from './expenses.js';
+export * from './talent.js';

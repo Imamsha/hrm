@@ -595,3 +595,82 @@ test('claim an expense, have finance verify and pay it, and receive an asset', a
   await equipment.getByRole('button', { name: 'Confirm receipt' }).click();
   await expect(equipment.getByText('received')).toBeVisible();
 });
+
+test('track a KPI goal and answer an anonymous pulse survey', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Covered on desktop');
+  test.setTimeout(120_000);
+  await registerViaUi(page);
+
+  await page.goto('/organization/structure?tab=companies');
+  await page.getByRole('button', { name: /New company/ }).click();
+  let dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Code/).fill('ACME');
+  await dialog.getByLabel(/^Name/).fill('Acme India');
+  await dialog.getByRole('button', { name: 'Create company' }).click();
+  await expect(dialog).toBeHidden();
+  await page.goto('/people/employees');
+  await page.getByRole('button', { name: /Add employee/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^First name/).fill('Esha');
+  await dialog.getByLabel(/^Date of joining/).fill('2025-01-06');
+  await dialog.getByLabel(/^Company/).selectOption({ label: 'Acme India (ACME)' });
+  await dialog.getByLabel(/^Employment type/).selectOption('FULL_TIME');
+  await dialog.getByRole('button', { name: 'Add employee' }).click();
+  await expect(page.getByRole('heading', { name: /Esha/ })).toBeVisible();
+  await page.getByRole('button', { name: /Actions/ }).click();
+  await page.getByRole('menuitem', { name: 'Link login account' }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Member').selectOption({ index: 2 });
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toBeHidden();
+
+  // A measured goal: progress follows the current value between start and target.
+  await page.goto('/me/goals');
+  await page.getByRole('button', { name: /New goal/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Title/).fill('Close support tickets');
+  await dialog.getByLabel(/^Type/).selectOption('KPI');
+  await expect(dialog.getByRole('option', { name: /^Esha/ })).toBeAttached();
+  await dialog.getByLabel(/^Employee/).selectOption({ index: 1 });
+  await dialog.getByLabel(/^Start value/).fill('0');
+  await dialog.getByLabel(/^Target value/).fill('200');
+  await dialog.getByLabel(/^Unit/).fill('tickets');
+  await dialog.getByRole('button', { name: 'Create goal' }).click();
+  await expect(dialog).toBeHidden();
+  const goals = page.getByRole('list', { name: 'Goals' });
+  await goals.getByRole('button', { name: 'Check in' }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Current value/).fill('50');
+  await dialog.getByLabel(/^What changed/).fill('Cleared the backlog');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(goals).toContainText('50 of 200 tickets');
+  await expect(goals).toContainText('25%');
+
+  // An anonymous pulse: the respondent is told, and results appear at the group minimum.
+  await page.goto('/engagement/surveys');
+  await page.getByRole('button', { name: /New survey/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Title/).fill('Quarterly pulse');
+  await dialog.getByLabel(/^Type/).selectOption('PULSE');
+  await dialog.getByLabel(/^Minimum group size/).fill('1');
+  await dialog.getByLabel(/^Opens/).fill('2026-01-01T09:00');
+  await dialog.getByLabel(/^Closes/).fill('2030-01-01T09:00');
+  await dialog.getByLabel('Question 1', { exact: true }).fill('Would you recommend us?');
+  await dialog.getByLabel('Question 1 type').selectOption('ENPS');
+  await dialog.getByRole('button', { name: 'Save draft' }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole('button', { name: 'Publish' }).click();
+  await page.getByRole('button', { name: 'Respond' }).click();
+  dialog = page.getByRole('dialog');
+  await expect(dialog.getByText(/stored without your name/)).toBeVisible();
+  await dialog
+    .getByRole('group', { name: 'Would you recommend us?' })
+    .getByRole('button', { name: '9' })
+    .click();
+  await dialog.getByRole('button', { name: 'Submit' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('responded', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Results' }).click();
+  await expect(page.getByLabel('Survey results')).toContainText('eNPS 100');
+});

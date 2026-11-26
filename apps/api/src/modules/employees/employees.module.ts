@@ -19,6 +19,6 @@ import { SelfServiceController } from './self-service.controller.js';
     EmployeeSensitiveService,
     EmployeeDocumentsService,
   ],
-  exports: [EmployeesService, EmployeeDocumentsService],
+  exports: [EmployeesService, EmployeeDocumentsService, EmploymentService],
 })
 export class EmployeesModule {}

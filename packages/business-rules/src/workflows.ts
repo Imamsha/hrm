@@ -4,12 +4,14 @@
  */
 import { type DecimalInput, toDecimal } from './money.js';
 
-export type WorkflowProcess = 'LEAVE_REQUEST' | 'EXPENSE_CLAIM' | 'TRAVEL_REQUEST' | 'TIMESHEET';
+export type WorkflowProcess =
+  'LEAVE_REQUEST' | 'EXPENSE_CLAIM' | 'TRAVEL_REQUEST' | 'TIMESHEET' | 'RESIGNATION';
 export const WORKFLOW_PROCESSES: readonly WorkflowProcess[] = [
   'LEAVE_REQUEST',
   'EXPENSE_CLAIM',
   'TRAVEL_REQUEST',
   'TIMESHEET',
+  'RESIGNATION',
 ];
 /** What the threshold of each process is measured in. */
 export const PROCESS_MEASURE: Record<WorkflowProcess, string> = {
@@ -17,6 +19,7 @@ export const PROCESS_MEASURE: Record<WorkflowProcess, string> = {
   EXPENSE_CLAIM: 'amount',
   TRAVEL_REQUEST: 'estimated cost',
   TIMESHEET: 'hours',
+  RESIGNATION: 'waived notice days',
 };
 
 export type ApproverRule =

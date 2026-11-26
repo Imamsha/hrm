@@ -1,6 +1,12 @@
 import { PERMISSIONS, type Permission } from '@hrm/shared-types';
 import {
   Activity,
+  BookMarked,
+  DoorOpen,
+  Headset,
+  LogOut as LeaveIcon,
+  Scale,
+  Wrench,
   FileSignature,
   FileStack,
   GitBranch,
@@ -358,6 +364,47 @@ export const navigation: NavSection[] = [
         icon: Globe,
         permission: PERMISSIONS.PROJECTS_PORTAL_ACCESS,
         hideWith: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+    ],
+  },
+  {
+    label: 'Helpdesk & compliance',
+    items: [
+      {
+        label: 'Helpdesk',
+        to: '/helpdesk',
+        icon: Headset,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Knowledge base',
+        to: '/helpdesk/knowledge',
+        icon: BookMarked,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Resignation',
+        to: '/me/resignation',
+        icon: LeaveIcon,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Separations',
+        to: '/separation',
+        icon: DoorOpen,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Compliance',
+        to: '/compliance',
+        icon: Scale,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Helpdesk setup',
+        to: '/helpdesk/setup',
+        icon: Wrench,
+        permission: PERMISSIONS.HELPDESK_CONFIG_MANAGE,
       },
     ],
   },

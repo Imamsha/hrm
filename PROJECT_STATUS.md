@@ -4,90 +4,83 @@ _Last updated: 2026-11-26_
 
 ## Current phase
 
-**Phase 11a — Workflow engine & documents: complete, verified locally, awaiting owner approval.**
-Design: [ADR-018](docs/architecture/ADR-018-workflows-and-documents.md). Nothing of Phase 11a is
-committed when Phase 11b starts (owner approval 2026-11-26).
+**Phase 11b — Helpdesk, separation & offboarding, compliance: complete, approved and pushed.** Design: [ADR-019](docs/architecture/ADR-019-helpdesk-separation-compliance.md).
+Demo data for manual testing: `pnpm seed:demo` (logins in `docs/TESTING_GUIDE.md`).
 
-- Phases 01–10: pushed (Phase 10 = `ef2ef1e`); CI not checked from this machine (no `gh` CLI).
-- Owner decisions 2026-11-26: Phase 11 is split into **11a** (workflow engine, documents,
-  e-acceptance) and **11b** (helpdesk, separation & offboarding, compliance). Signing is a
-  built-in e-acceptance; provider e-signatures move to Phase 15.
+- Phases 01–11b: approved and pushed (Phase 11a = `ebe5bd4`); CI not checked from this machine
+  (no `gh` CLI).
+- With 11b, Phase 11 (documents, helpdesk & workflows) is complete.
 
-**Next phase (after approval):** Phase 11b — helpdesk, separation & offboarding, compliance.
+**Next phase (after approval):** Phase 12 — Advanced AI platform (see `docs/DEVELOPMENT_ROADMAP.md`).
 
-## Phase 11a verification (2026-11-26)
+## Phase 11b verification (2026-11-26)
 
-| Check                                                    | Result                                                                                                                                                                   |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pnpm turbo run typecheck lint test build` (11 packages) | ✅ 37/37 tasks (`--force --concurrency=2`)                                                                                                                               |
-| `pnpm format:check`                                      | ✅ clean                                                                                                                                                                 |
-| Unit/component tests                                     | ✅ API 81 · shared-types 3 · validation 90 · api-client 12 · design-tokens 38 · business-rules 110 · ui-web 12 · web 67 · mobile 8 (jest)                                |
-| Integration tests (real Postgres/Redis/S3/Mailpit)       | ✅ 141 passed (129 earlier + 12 Phase 11a; payslip and invoice PDF checks added to existing tests)                                                                       |
-| Migrations                                               | ✅ 13 applied to dev and test; drift check reports no difference                                                                                                         |
-| Playwright E2E (production build + live API)             | ✅ 15 passed, 13 skipped by design. New: design and activate a two-step leave workflow → template with a merge field → letter generated, accepted, certificate available |
-| GitHub Actions                                           | ⏳ runs when Phase 11a is pushed                                                                                                                                         |
+| Check                                                    | Result                                                                                                                                                                              |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm turbo run typecheck lint test build` (11 packages) | ✅ 37/37 tasks (`--force --concurrency=2`)                                                                                                                                          |
+| `pnpm format:check`                                      | ✅ clean                                                                                                                                                                            |
+| Unit/component tests                                     | ✅ API 81 · shared-types 3 · validation 94 · api-client 12 · design-tokens 38 · business-rules 116 · ui-web 12 · web 72 · mobile 8 (jest)                                           |
+| Integration tests (real Postgres/Redis/S3/Mailpit)       | ✅ 149 passed (141 earlier + 8 Phase 11b)                                                                                                                                           |
+| Migrations                                               | ✅ 14 applied to dev and test; drift check reports no difference                                                                                                                    |
+| Playwright E2E (production build + live API)             | ✅ 16 passed, 14 skipped by design. New: helpdesk category with SLA → urgent ticket raised, answered, resolved, closed → monthly compliance task completed and rolled to next month |
+| GitHub Actions                                           | ⏳ runs when Phase 11b is pushed                                                                                                                                                    |
 
-## Phase 11a delivered
+## Phase 11b delivered
 
-- **Approval workflows:** your own chains for leave, expense claims (manager stage), travel and
-  timesheets.
-  - Steps go to the reporting manager, a higher manager, anyone with a role, or a named person.
-  - A step can apply only above a threshold (days, amount or hours).
-  - A step can have an SLA; when it is late, it escalates to the approver's manager or a named
-    person.
-  - Steps that would go to the requester, or that nobody can decide, are skipped and recorded.
-  - Running approvals keep the steps they started with.
-  - Without an active workflow, every request keeps today's rule.
-- **Approval inbox and delegation:**
-  - One inbox for every waiting step, with overdue, "on behalf of" and escalation badges.
-  - Approve or reject (with a reason) from the inbox or from the request's own page.
-  - Delegate your approvals for a period (all or chosen processes); revoking hands them back.
-  - The approval trail shows who decided what.
-- **Document templates:**
-  - Letters in your own wording with merge fields per category (offer, appointment,
-    experience, relieving, salary certificate, policy, other).
-  - Unknown fields are refused; published versions never change.
-- **Generated documents:**
-  - PDF letters filled from employee or offer records. Values not on record (e.g. the last
-    working day) are asked for; a letter is never produced with a gap.
-  - Each file is stored with its SHA-256.
-- **E-acceptance:**
-  - Employees accept when signed in.
-  - Candidates accept an offer letter from an e-mailed link with a one-time code; this marks the
-    offer accepted.
-  - The record holds who, how, when, the IP address and the hash. A replaced file is refused.
-  - A certificate page is appended once everyone has accepted.
-  - The UI states that this is not a qualified or Aadhaar e-signature.
-- **Company documents:** PDF policies for everyone or a department, versioned, with
-  per-version acknowledgement and counts.
-- **PDFs** of finalized payslips and of issued invoices (billing and client portal).
+- **Helpdesk:**
+  - Your categories (HR, payroll, IT, …), each with agents, a default assignee, an escalation
+    contact and an SLA per priority; categories can be confidential.
+  - Tickets are numbered, with due times, breach flags, internal notes, attachments (PDF or
+    image), history, rating and reopening.
+  - Tickets past their resolution time are escalated every 15 minutes.
+  - A knowledge base with search, "was this helpful" votes, and suggestions while raising a
+    ticket.
+- **Separation & offboarding:**
+  - Employees submit a resignation. Your notice period (if set) shows the notice last day and the
+    days to waive.
+  - It is approved through the workflow engine (new `RESIGNATION` process) or by the reporting
+    manager; approval puts the employee on notice.
+  - HR can also start terminations, retirements and contract ends.
+  - Each separation gets an exit checklist: your clearance items, plus the leaver's assets and
+    licence seats (clear themselves when returned or revoked) and the manager's knowledge
+    transfer. HR can waive an item with a reason.
+  - Exit interviews use your questions and are seen by HR only. Completing the separation
+    requires full clearance, then closes employment and suspends the login.
+  - Links to the full & final settlement and experience/relieving letters (the last working day
+    is merged).
+  - Exit analytics: attrition %, by month, type, reason and department; interview averages from 5
+    answers.
+- **Compliance:**
+  - Your obligations (filings, renewals, audits, reviews) with owners and recurrence; none are
+    pre-loaded.
+  - Tasks are completed with a note and evidence, and the next occurrence follows automatically.
+  - An expiry tracker for certifications, licences, fixed-term engagements and tasks.
+  - A dashboard with policy acknowledgement rates and recent audit activity.
 
-## Assumptions (recorded in ADR-018; the owner may override)
+## Assumptions (recorded in ADR-019; the owner may override)
 
-1. Workflows cover leave, expense claims (manager stage), travel and timesheets; requisitions,
-   profile changes and regularizations keep their flows for now.
-2. A role step needs one approval from any holder (no "all must approve").
-3. Escalation reassigns a late step; it never approves or rejects.
-4. PDFs use Helvetica (Latin script; amounts with the currency code). Indic scripts need bundled
-   fonts later.
-5. Uploads are checked to be real PDFs but not malware-scanned yet (Phase 15).
+1. SLA clocks run continuously (no business hours, no pause while waiting on the requester).
+2. One notice period for the organization, in days.
+3. Clearance must be complete before a separation can be completed (HR can waive items).
+4. Exit interviews are linked to the employee but visible only to HR (`separation.interview.read`).
+5. No statutory compliance calendar or SLA is shipped; regulatory reports come with sourced
+   templates in Phase 13.
+6. E-mail reminders for tickets and tasks arrive with Phase 15 notifications.
 
-## Issues found and fixed during Phase 11a
+## Issues found and fixed during Phase 11b
 
-1. **DATABASE_SCHEMA.md had been duplicated by the Phase 09 and 10 doc updates.** A regex
-   pattern in the inserted text (`$` followed by a backtick) is a special sequence for
-   JavaScript's `String.replace`, so the whole document was copied (1,093 lines, four copies,
-   no "Migrations" heading). It was rebuilt from the last clean version with the Phase 09–11a
-   sections. Doc scripts now use function replacements, and duplicated headings are checked.
-2. Escalation first closed the overdue step and opened a new one, which the database rules
-   correctly forbid (decided steps never change; one task per step). It now reassigns the
-   pending step.
-3. Candidate acceptance failed with a 500: the public request had no tenant context for
-   auditing. It now runs inside the tenant resolved from the link.
-4. The engine's inbox route would have clashed with the Phase 05 `/me/approvals`; it is
-   `/me/approval-tasks`.
-5. A delegation left active by one test captured a later step in another, as designed. The test
-   now revokes it, which also covers revocation.
+1. **An escalated ticket was invisible to its new assignee** when the escalation contact was not
+   an agent of the category. The assignee now always works the ticket.
+2. Resignation approval would have needed the employee lifecycle permission, which managers do
+   not have. Approval now puts the employee on notice directly (the approval is the authority);
+   HR-started separations still use the employment actions with their checks.
+3. A validation schema name (`completeTaskSchema`) collided with recruitment's; it is
+   `completeComplianceTaskSchema`.
+4. **E2E against `pnpm dev`:** your dev API restarts whenever builds change, and a test that hit
+   it mid-restart failed with "Unable to reach the server". The suite was run against a separate
+   API on port 3101 (web built with `VITE_API_BASE_URL`), leaving your dev session untouched.
+5. ADR-019 listed employee-document expiry, but documents carry no expiry date; the tracker covers
+   certifications, licences, fixed-term engagements and tasks (noted as carried forward).
 
 ## Known issues and risks
 
@@ -123,19 +116,17 @@ committed when Phase 11b starts (owner approval 2026-11-26).
 | 20261125000000_performance_learning_engagement    | ✅  | ✅   |
 | 20261126000000_clients_projects                   | ✅  | ✅   |
 | 20261127000000_workflows_documents                | ✅  | ✅   |
+| 20261128000000_helpdesk_separation_compliance     | ✅  | ✅   |
 
 ## Next recommended task
 
-1. Owner reviews Phase 11a (start `pnpm dev`, sign in as owner, link yourself to an employee and
+1. Owner reviews Phase 11b (start `pnpm dev`, sign in as owner, link yourself to an employee and
    give someone a manager):
-   - **Approval workflows**: create a chain (for example manager, then finance above an amount),
-     activate it, submit a request as an employee and decide it in **Approval inbox**;
-   - **Approval inbox**: delegate your approvals for a few days;
-   - **Document templates**: write a letter with merge fields; **Documents**: generate it with a
-     signer and accept it; for an offer, generate an offer letter for a sent offer (the candidate
-     receives the link in Mailpit);
-   - **Company documents**: publish a PDF that needs acknowledgement;
-   - download a payslip or invoice PDF.
+   - **Helpdesk setup**: add a category with agents and an SLA; raise a ticket in **Helpdesk** and
+     work it from the queue; add an article in **Knowledge base**;
+   - **Separations → Settings**: notice period, clearance items, exit questions; then, as an
+     employee, submit a **Resignation**, approve it as the manager and work the exit checklist;
+   - **Compliance**: add an obligation, complete its task with evidence, check the dashboard.
 2. Confirm or override the assumptions above.
-3. On approval: commit and push Phase 11a, then confirm CI is green.
-4. Then Phase 11b: helpdesk, separation & offboarding, compliance.
+3. On approval: commit and push Phase 11b, then confirm CI is green.
+4. Then Phase 12: advanced AI platform.

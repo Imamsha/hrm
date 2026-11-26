@@ -241,6 +241,7 @@ export class DocumentsService {
           ...empSelect,
           dateOfJoining: true,
           workEmail: true,
+          lastWorkingDate: true,
           employmentRecords: {
             where: inForceWhere(todayIso()),
             orderBy: { effectiveFrom: 'desc' },
@@ -274,6 +275,7 @@ export class DocumentsService {
       set('employee.location', job?.branch?.name);
       set('employee.dateOfJoining', isoDate(e.dateOfJoining));
       set('employee.workEmail', e.workEmail);
+      set('employee.lastWorkingDay', e.lastWorkingDate ? isoDate(e.lastWorkingDate) : null);
       const ctc = e.salaries[0]?.annualCtc;
       set('employee.ctc', ctc ? new Decimal(ctc.toString()).toFixed(2) : null);
       return { values, employeeName: displayName(e), candidate: null };

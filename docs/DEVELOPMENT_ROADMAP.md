@@ -19,8 +19,8 @@ approval before the next phase starts.
 | 08    | Expenses, assets & travel: claims, reimbursements, OCR, asset allocation/return, travel requests/approvals/settlements                                                                                                                                    | 🟡 verified locally                                         |
 | 09    | Performance & learning: cycles, OKRs, goals, KPIs, feedback, 360, training, learning paths, certifications, engagement                                                                                                                                    | ✅ pushed (`f169c98`)                                       |
 | 10    | Clients & projects: clients, projects, features/epics, stories, tasks, bugs, assignments, sprints & boards, timesheets, client billing, client portal (owner request 2026-11-24)                                                                          | ✅ pushed (`ef2ef1e`)                                       |
-| 11a   | Workflows & documents: workflow engine, approval designer, escalation, delegation, document templates, generated PDFs, policy library, e-acceptance                                                                                                       | 🟡 verified locally, awaiting approval                      |
-| 11b   | Helpdesk, separation & compliance: ticketing, SLA, knowledge base, resignation & exit, compliance registers                                                                                                                                               | ⏳                                                          |
+| 11a   | Workflows & documents: workflow engine, approval designer, escalation, delegation, document templates, generated PDFs, policy library, e-acceptance                                                                                                       | ✅ pushed (`ebe5bd4`)                                       |
+| 11b   | Helpdesk, separation & compliance: ticketing, SLA, knowledge base, resignation & exit, compliance registers                                                                                                                                               | 🟡 verified locally, awaiting approval                      |
 | 12    | Advanced AI platform: HR assistant, recruitment AI, document intelligence, OCR, embeddings, RAG, agents, workforce insights, automation, cost monitoring, AI security, evaluation                                                                         | ⏳                                                          |
 | 13    | Analytics & reporting: dashboards, employee/payroll/attendance/recruitment/attrition/performance analytics, report builder, export, scheduled reports, AI summaries                                                                                       | ⏳                                                          |
 | 14    | Complete React Native app: employee & manager apps, attendance, leave, payslips, expenses, documents, notifications, approvals, push, offline data, mobile security                                                                                       | ⏳                                                          |
@@ -82,6 +82,16 @@ approval before the next phase starts.
 - Investment proof verification workflow and declaration lock dates (Phase 11 workflows).
 - Off-cycle runs (bonus, correction) and payroll variance analytics (Phase 13).
 - Batched/background calculation for very large runs (BullMQ), and mobile payslips (Phase 14).
+
+## Carried forward from Phase 11b
+
+- Business-hours SLA calendars and pausing while waiting on the requester; e-mail-to-ticket and
+  notifications (Phase 15).
+- Per-grade or per-contract notice periods; buy-out of notice through payroll; rehire
+  eligibility.
+- Expiry dates on employee documents and review dates on library documents.
+- Statutory registers and returns from sourced templates; compliance reports (Phase 13).
+- AI ticket classification and suggested replies (Phase 12, with guardrails).
 
 ## Carried forward from Phase 11a
 

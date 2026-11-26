@@ -807,3 +807,92 @@ test('design an approval workflow, generate a letter and accept it', async ({ pa
   await expect(docs.getByText('accepted', { exact: true })).toBeVisible();
   await expect(docs.getByRole('button', { name: /With certificate/ })).toBeVisible();
 });
+
+test('run a helpdesk ticket to closure and roll a compliance task forward', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'Covered on desktop');
+  test.setTimeout(120_000);
+  await registerViaUi(page);
+
+  await page.goto('/organization/structure?tab=companies');
+  await page.getByRole('button', { name: /New company/ }).click();
+  let dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Code/).fill('ACME');
+  await dialog.getByLabel(/^Name/).fill('Acme India');
+  await dialog.getByRole('button', { name: 'Create company' }).click();
+  await expect(dialog).toBeHidden();
+  await page.goto('/people/employees');
+  await page.getByRole('button', { name: /Add employee/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^First name/).fill('Esha');
+  await dialog.getByLabel(/^Date of joining/).fill('2025-01-06');
+  await dialog.getByLabel(/^Company/).selectOption({ label: 'Acme India (ACME)' });
+  await dialog.getByLabel(/^Employment type/).selectOption('FULL_TIME');
+  await dialog.getByRole('button', { name: 'Add employee' }).click();
+  await expect(page.getByRole('heading', { name: /Esha/ })).toBeVisible();
+  await page.getByRole('button', { name: /Actions/ }).click();
+  await page.getByRole('menuitem', { name: 'Link login account' }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Member').selectOption({ index: 2 });
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toBeHidden();
+
+  // An IT category worked by the owner, with an urgent-ticket SLA.
+  await page.goto('/helpdesk/setup');
+  await page.getByRole('button', { name: /New category/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Code/).fill('IT');
+  await dialog.getByLabel(/^Name/).fill('IT support');
+  await expect(dialog.getByRole('option', { name: /^Esha/ }).first()).toBeAttached();
+  await dialog.getByLabel(/^Agents/).selectOption({ index: 1 });
+  await dialog.getByLabel('URGENT resolution hours').fill('8');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByLabel('Categories')).toContainText('urgent 8 h resolution');
+
+  await page.goto('/helpdesk');
+  await page.getByRole('button', { name: /New ticket/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Category/).selectOption({ label: 'IT support' });
+  await dialog.getByLabel(/^Priority/).selectOption('URGENT');
+  await dialog.getByLabel(/^Subject/).fill('Laptop will not boot');
+  await dialog.getByLabel(/^Description/).fill('Black screen after update');
+  await dialog.getByRole('button', { name: 'Raise ticket' }).click();
+  await expect(
+    page.getByRole('heading', { name: /^HD-\d{4}-0001 Laptop will not boot$/ }),
+  ).toBeVisible();
+  await page.getByLabel('Reply').fill('Hold the power button for 30 seconds');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.getByRole('list', { name: 'Conversation' })).toContainText(
+    'Hold the power button',
+  );
+  await page.getByLabel('Resolution').fill('Reset the BIOS');
+  await page.getByRole('button', { name: 'Resolve' }).click();
+  await expect(page.getByText('Resolution: Reset the BIOS')).toBeVisible();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.getByText('closed', { exact: true })).toBeVisible();
+
+  // A monthly obligation: completing it schedules the next month.
+  await page.goto('/compliance');
+  await page.getByRole('tab', { name: 'Obligations' }).click();
+  await page.getByRole('button', { name: /New obligation/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Title/).fill('Monthly contribution filing');
+  await expect(dialog.getByRole('option', { name: /^Esha/ }).first()).toBeAttached();
+  await dialog.getByLabel(/^Owner/).selectOption({ index: 1 });
+  await dialog.getByLabel(/^First due on/).fill('2026-01-15');
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole('tab', { name: 'My tasks' }).click();
+  const tasks = page.getByRole('table', { name: 'My compliance tasks' });
+  await expect(tasks.getByText('2026-01-15')).toBeVisible();
+  await tasks.getByRole('button', { name: 'Complete' }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^What was done/).fill('Filed on time');
+  await dialog.getByRole('button', { name: 'Complete' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(tasks.getByText('2026-02-15')).toBeVisible();
+  await expect(tasks.getByText('done', { exact: true })).toBeVisible();
+});

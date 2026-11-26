@@ -35,6 +35,69 @@ Integration tests use an isolated database (`hrm_test`), Redis DB 1 and bucket `
 (`TEST_*` variables in `.env.example`). The audit log is append-only, so tests create uniquely
 named tenants instead of cleaning up.
 
+## Demo data for manual testing
+
+With the API running (`pnpm dev`) and Mailpit up, run:
+
+```bash
+pnpm seed:demo
+```
+
+This creates one demo organization, **Acme Demo Pvt Ltd**, through the real API (local URLs only).
+All users share the password `Demo-Pass-2026`:
+
+| Role               | User            | Sign in as            | What to try                                                                             |
+| ------------------ | --------------- | --------------------- | --------------------------------------------------------------------------------------- |
+| Owner              | Priya Sharma    | owner@hrm-demo.test   | Everything: setup, workflows, reports                                                   |
+| Organization admin | Arjun Mehta     | admin@hrm-demo.test   | IT helpdesk queue (Rahul's ticket)                                                      |
+| HR admin           | Kavitha Rao     | hr@hrm-demo.test      | Approve Sneha's resignation, exit checklist, HR helpdesk, compliance task               |
+| Finance            | Rohan Iyer      | finance@hrm-demo.test | Second approval of Ananya's 12,000 claim (after the manager), invoices, compliance task |
+| Manager            | Vikram Singh    | manager@hrm-demo.test | Approve Ananya's leave, claim and timesheet; project board and sprint                   |
+| Employee           | Ananya Das      | ananya@hrm-demo.test  | Leave, claim, timesheet, course, goals, survey, recognition                             |
+| Employee           | Rahul Verma     | rahul@hrm-demo.test   | Allocated laptop, raised helpdesk ticket, approved leave                                |
+| Employee           | Sneha Kapoor    | sneha@hrm-demo.test   | Appointment letter to accept, pending resignation                                       |
+| Client             | Maria Fernandes | client@hrm-demo.test  | Client portal: Globex project and client-visible items                                  |
+
+- Re-running stops if the demo organization already exists. `DEMO_TAG=2 pnpm seed:demo` creates a
+  second one (users `@hrm-demo-2.test`).
+- Overrides: `DEMO_API_URL`, `DEMO_MAILPIT_URL`, `DEMO_PASSWORD`.
+- All names, amounts and dates are fictional. **No payroll statutory rules or payroll runs are
+  seeded**; configure them under Payroll with sourced values.
+- Invitation e-mails are in Mailpit (http://localhost:8025).
+
+## What is covered (Phase 11b)
+
+- **business-rules** (`helpdesk-separation-compliance.test.ts`, 6 tests):
+  - ticket moves, numbering, SLA due times and breaches;
+  - notice last day and waived days, clearance completion, attrition, rating averages with a
+    minimum;
+  - monthly/quarterly/half-yearly/yearly recurrence with month-end clamping, due states.
+- **validation** (`helpdesk.test.ts`): agents required, one SLA per priority, resolution
+  required, reasons to reject and waive, one owner per clearance item, choice questions.
+- **integration** (`operations.int.test.ts`, 8 tests):
+  - ticket numbering and SLA, visibility (requester, agents, others), internal notes hidden,
+    first response, resolution, rating and closing; closed tickets frozen (direct SQL);
+  - escalation by the sweep to the escalation contact;
+  - confidential categories hidden from `helpdesk.ticket.manage`; article search without
+    drafts;
+  - resignation with notice and waived days, a single pending resignation, manager approval
+    putting the employee on notice, a case with template, licence and knowledge-transfer items;
+    decided resignations frozen (direct SQL);
+  - clearance by owners, the licence item auto-cleared on revocation, completion blocked until
+    clear; exit interview once and hidden from the manager; completion suspending the login;
+    analytics;
+  - withdrawal;
+  - a monthly obligation rolled forward with evidence; completed tasks frozen (direct SQL); an
+    expiring licence; dashboard counts and audit;
+  - tenant isolation.
+- **web** (`features/operations/operations.test.tsx`, 5 tests): navigation gating; article
+  suggestion and ticket body; resignation body; exit-interview privacy notice; completing a
+  compliance task with evidence.
+- **E2E:**
+  - set up an IT category with an SLA;
+  - raise an urgent ticket, reply, resolve and close it;
+  - create a monthly obligation, complete the task and see the next month's task.
+
 ## What is covered (Phase 11a)
 
 - **business-rules** (`workflows.test.ts`, 8 tests):

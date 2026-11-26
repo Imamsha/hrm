@@ -42,12 +42,14 @@ export const PROCESS_LABEL: Record<WorkflowProcessValue, string> = {
   EXPENSE_CLAIM: 'Expense claims (manager stage)',
   TRAVEL_REQUEST: 'Travel requests',
   TIMESHEET: 'Timesheets',
+  RESIGNATION: 'Resignations',
 };
 export const MEASURE_LABEL: Record<WorkflowProcessValue, string> = {
   LEAVE_REQUEST: 'days',
   EXPENSE_CLAIM: 'claimed amount',
   TRAVEL_REQUEST: 'estimated cost',
   TIMESHEET: 'hours',
+  RESIGNATION: 'waived notice days',
 };
 export const CATEGORY_LABEL: Record<string, string> = {
   OFFER_LETTER: 'Offer letter',

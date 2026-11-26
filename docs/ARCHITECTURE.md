@@ -291,7 +291,23 @@ See ADR-012.
     certificate page.
   - Payslips and invoices are rendered on request from finalized figures.
 
-## 21. ADR index
+## 21. Helpdesk, separation & compliance (Phase 11b)
+
+- `OperationsModule` (`modules/helpdesk`, `modules/separation`, `modules/compliance`); pure
+  rules in `@hrm/business-rules/helpdesk-separation-compliance` (ticket moves, SLA due times and
+  breaches, notice last day and waived days, clearance completion, attrition, rating averages,
+  recurrence with month-end clamping, due states).
+- **Tickets** are numbered under a row lock. A BullMQ sweep reassigns tickets past their
+  resolution time. Internal notes never reach the requester.
+- **Resignations** use the workflow engine (`RESIGNATION`). Approval opens a separation case
+  whose clearance list combines the organization's template with the leaver's assets, licence
+  seats and the manager's handover. The database refuses to complete a case with anything
+  pending.
+- **Compliance** obligations generate one task per occurrence. The dashboard joins tasks,
+  expiring certifications, licences and fixed-term engagements, policy acknowledgements and the
+  audit log.
+
+## 22. ADR index
 
 | ADR                                                                     | Title                                                             |
 | ----------------------------------------------------------------------- | ----------------------------------------------------------------- |
@@ -313,3 +329,4 @@ See ADR-012.
 | [016](architecture/ADR-016-performance-learning-engagement.md)          | Performance, learning and engagement                              |
 | [017](architecture/ADR-017-clients-and-projects.md)                     | Clients and projects (work, sprints, timesheets, billing, portal) |
 | [018](architecture/ADR-018-workflows-and-documents.md)                  | Workflow engine, documents and e-acceptance                       |
+| [019](architecture/ADR-019-helpdesk-separation-compliance.md)           | Helpdesk, separation & offboarding, compliance                    |

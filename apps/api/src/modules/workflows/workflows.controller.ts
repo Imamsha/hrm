@@ -29,7 +29,7 @@ const pipe = <S extends z.ZodType>(s: S) => new ZodValidationPipe(s);
 const uuid = new ParseUUIDPipe();
 type Out<S extends z.ZodType> = z.output<S>;
 const historyQuery = z.object({
-  process: z.enum(['LEAVE_REQUEST', 'EXPENSE_CLAIM', 'TRAVEL_REQUEST', 'TIMESHEET']),
+  process: z.enum(['LEAVE_REQUEST', 'EXPENSE_CLAIM', 'TRAVEL_REQUEST', 'TIMESHEET', 'RESIGNATION']),
   subjectId: z.uuid(),
 });
 

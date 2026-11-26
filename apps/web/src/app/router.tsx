@@ -11,6 +11,18 @@ import { EmployeeProfilePage, MyProfilePage } from '@/features/employees/profile
 import { MembersPage } from '@/features/members/members-page';
 import { OrganizationSettingsPage } from '@/features/organization/organization-settings-page';
 import { OverviewPage } from '@/features/overview/overview-page';
+import { CompliancePage } from '@/features/operations/compliance-pages';
+import {
+  HelpdeskPage,
+  HelpdeskSetupPage,
+  KnowledgePage,
+  TicketPage,
+} from '@/features/operations/helpdesk-pages';
+import {
+  MyResignationPage,
+  SeparationCasePage,
+  SeparationPage,
+} from '@/features/operations/separation-pages';
 import { ApprovalInboxPage, WorkflowsPage } from '@/features/workflows/approval-pages';
 import {
   DocumentsPage,
@@ -458,6 +470,87 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequirePermission permission={PERMISSIONS.EXPENSES_CATEGORY_MANAGE}>
                     <ExpenseSetupPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'helpdesk',
+                handle: crumb('Helpdesk'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <HelpdeskPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'helpdesk/tickets/:id',
+                handle: crumb('Ticket'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <TicketPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'helpdesk/knowledge',
+                handle: crumb('Knowledge base'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <KnowledgePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'helpdesk/setup',
+                handle: crumb('Helpdesk setup'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.HELPDESK_CONFIG_MANAGE}>
+                    <HelpdeskSetupPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/resignation',
+                handle: crumb('Resignation'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <MyResignationPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'separation',
+                handle: crumb('Separations'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <SeparationPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'separation/resignations',
+                handle: crumb('Separations'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <SeparationPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'separation/cases/:id',
+                handle: crumb('Exit checklist'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <SeparationCasePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'compliance',
+                handle: crumb('Compliance'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <CompliancePage />
                   </RequirePermission>
                 ),
               },

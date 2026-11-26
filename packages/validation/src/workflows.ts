@@ -15,7 +15,13 @@ import { nullableText } from './structure.js';
  * template wording are organization configuration; these schemas check shape and consistency.
  */
 
-const processSchema = z.enum(['LEAVE_REQUEST', 'EXPENSE_CLAIM', 'TRAVEL_REQUEST', 'TIMESHEET']);
+const processSchema = z.enum([
+  'LEAVE_REQUEST',
+  'EXPENSE_CLAIM',
+  'TRAVEL_REQUEST',
+  'TIMESHEET',
+  'RESIGNATION',
+]);
 const threshold = z
   .union([z.string().trim(), z.number(), z.literal(''), z.null()])
   .optional()
@@ -78,7 +84,7 @@ export const delegationSchema = z
     delegateEmployeeId: z.uuid('Choose the delegate'),
     from: isoDateSchema,
     to: isoDateSchema,
-    processes: z.array(processSchema).max(4).default([]),
+    processes: z.array(processSchema).max(5).default([]),
     note: nullableText(300),
   })
   .refine((v) => v.to >= v.from, { message: 'The end cannot be before the start', path: ['to'] });

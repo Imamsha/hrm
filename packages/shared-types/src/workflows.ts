@@ -3,7 +3,7 @@ import type { EmployeeRef } from './employees.js';
 /** Workflow engine and documents transport types (Phase 11a, ADR-018). */
 
 export type WorkflowProcessValue =
-  'LEAVE_REQUEST' | 'EXPENSE_CLAIM' | 'TRAVEL_REQUEST' | 'TIMESHEET';
+  'LEAVE_REQUEST' | 'EXPENSE_CLAIM' | 'TRAVEL_REQUEST' | 'TIMESHEET' | 'RESIGNATION';
 
 export type ApproverRuleItem =
   | { type: 'REPORTING_MANAGER' }

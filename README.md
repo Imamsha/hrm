@@ -22,6 +22,12 @@ pnpm dev
 - Mobile: Expo dev server (press `a` for Android, `w` for web)
 - Mail: http://localhost:8025 · Storage console: http://localhost:9001
 
+## Demo data
+
+To explore the app with sample users for every role (owner, admin, HR, finance, manager,
+employees, client), run `pnpm seed:demo` after `pnpm dev` is up. Logins and a walkthrough are
+in [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md#demo-data-for-manual-testing).
+
 ## Repository
 
 ```

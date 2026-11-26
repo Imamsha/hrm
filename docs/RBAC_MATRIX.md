@@ -89,6 +89,13 @@ other tenants → 404/400).
 | `documents.template.manage`       | Document templates and versions (Phase 11a)                                                                        |
 | `documents.document.generate`     | Generate documents and request acceptance; see all generated documents (Phase 11a)                                 |
 | `documents.library.manage`        | Publish, version and archive company documents; acknowledgement counts (Phase 11a)                                 |
+| `helpdesk.config.manage`          | Helpdesk categories, agents and SLA policies (Phase 11b)                                                           |
+| `helpdesk.ticket.manage`          | Work any non-confidential ticket (Phase 11b)                                                                       |
+| `helpdesk.knowledge.manage`       | Knowledge base articles (Phase 11b)                                                                                |
+| `separation.case.manage`          | Separations, clearance, settings; approve resignations without a manager (Phase 11b)                               |
+| `separation.interview.read`       | Exit interview answers and exit analytics (Phase 11b)                                                              |
+| `compliance.calendar.manage`      | Compliance obligations and every task (Phase 11b)                                                                  |
+| `compliance.dashboard.read`       | Compliance dashboard, expiry tracker and all tasks (Phase 11b)                                                     |
 | `users.member.read`               | View members (and pending invitations)                                                                             |
 | `users.member.invite`             | Invite people, revoke invitations                                                                                  |
 | `users.member.update`             | Suspend/reactivate members, change role assignments                                                                |
@@ -314,6 +321,23 @@ Deciding a workflow step is **relationship-based**: the engine assigns each step
 approver (reporting manager, higher manager, role holders or a named person, or their delegate).
 Nobody decides their own request, even through a role or a delegation. Signing is by turn: only
 the next signer may accept.
+
+### Phase 11b role grants
+
+| Permission                 | Owner | Admin | HR admin | Finance | Manager | Employee |
+| -------------------------- | :---: | :---: | :------: | :-----: | :-----: | :------: |
+| helpdesk.config.manage     |   ✓   |   ✓   |    ✓     |         |         |          |
+| helpdesk.ticket.manage     |   ✓   |   ✓   |    ✓     |         |         |          |
+| helpdesk.knowledge.manage  |   ✓   |   ✓   |    ✓     |         |         |          |
+| separation.case.manage     |   ✓   |   ✓   |    ✓     |         |         |          |
+| separation.interview.read  |   ✓   |   ✓   |    ✓     |         |         |          |
+| compliance.calendar.manage |   ✓   |   ✓   |    ✓     |         |         |          |
+| compliance.dashboard.read  |   ✓   |   ✓   |    ✓     |    ✓    |         |          |
+
+Helpdesk agents work their categories by **membership** in the category (and anything assigned
+or escalated to them), not by permission. Confidential categories are visible to their agents
+only. Resignations are decided by the workflow or the reporting manager. Clearance items are
+decided by their owner (role or person) or HR. Compliance tasks are completed by their owner.
 
 ## Access scopes
 

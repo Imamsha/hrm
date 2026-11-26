@@ -24,7 +24,8 @@
     "db:generate": "pnpm --filter @hrm/api db:generate",
     "db:migrate": "pnpm --filter @hrm/api db:migrate",
     "db:deploy": "pnpm --filter @hrm/api db:deploy",
-    "db:status": "pnpm --filter @hrm/api db:status"
+    "db:status": "pnpm --filter @hrm/api db:status",
+    "seed:demo": "pnpm --filter @hrm/api seed:demo"
   },
   "devDependencies": {
     "prettier": "3.10.1",

@@ -11,6 +11,13 @@ import { EmployeeProfilePage, MyProfilePage } from '@/features/employees/profile
 import { MembersPage } from '@/features/members/members-page';
 import { OrganizationSettingsPage } from '@/features/organization/organization-settings-page';
 import { OverviewPage } from '@/features/overview/overview-page';
+import { ApprovalInboxPage, WorkflowsPage } from '@/features/workflows/approval-pages';
+import {
+  DocumentsPage,
+  LibraryPage,
+  PublicAcceptancePage,
+  TemplatesPage,
+} from '@/features/workflows/documents-pages';
 import { BillingPage, ClientsPage, InvoicePage } from '@/features/projects/billing-pages';
 import {
   PortalHomePage,
@@ -108,6 +115,7 @@ export const routes: RouteObject[] = [
       // Reachable whether or not signed in.
       { path: '/reset-password', element: <ResetPasswordPage /> },
       { path: '/accept-invitation', element: <AcceptInvitationPage /> },
+      { path: '/accept-document', element: <PublicAcceptancePage /> },
       // Public career site (no sign-in).
       { path: '/careers/:org', element: <CareersPage /> },
       { path: '/careers/:org/:slug', element: <CareerJobPage /> },
@@ -450,6 +458,51 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequirePermission permission={PERMISSIONS.EXPENSES_CATEGORY_MANAGE}>
                     <ExpenseSetupPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'me/approval-tasks',
+                handle: crumb('Approval inbox'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <ApprovalInboxPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'admin/workflows',
+                handle: crumb('Approval workflows'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.WORKFLOWS_DEFINITION_MANAGE}>
+                    <WorkflowsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'documents',
+                handle: crumb('Documents'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <DocumentsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'documents/templates',
+                handle: crumb('Document templates'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.DOCUMENTS_TEMPLATE_MANAGE}>
+                    <TemplatesPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'library',
+                handle: crumb('Company documents'),
+                element: (
+                  <RequirePermission permission={PERMISSIONS.EMPLOYEES_SELF_ACCESS}>
+                    <LibraryPage />
                   </RequirePermission>
                 ),
               },

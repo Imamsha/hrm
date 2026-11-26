@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, type OnModuleInit } from '@nestjs/common';
 import {
   billingRate,
   canMoveTimesheet,
@@ -22,6 +22,8 @@ import {
 } from '../../infrastructure/database/prisma.service.js';
 import { type AuthPrincipal, can } from '../access/principal.js';
 import { AuditService } from '../audit/audit.service.js';
+import { WorkflowEngine } from '../workflows/workflow-engine.service.js';
+import { WorkflowRegistry } from '../workflows/workflow-registry.js';
 import { isoDate, toDate } from '../employees/employee-scope.js';
 import { managerOf } from '../talent/talent-common.js';
 import {
@@ -64,15 +66,51 @@ type SheetRow = Prisma.TimesheetGetPayload<{ select: typeof sheetSelect }>;
 
 /** Weekly timesheets, approval by the reporting manager, and time reports (ADR-017). */
 @Injectable()
-export class TimesheetsService {
+export class TimesheetsService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly engine: WorkflowEngine,
+    private readonly registry: WorkflowRegistry,
   ) {}
+
+  /** Timesheets can run through an approval workflow (ADR-018). */
+  onModuleInit(): void {
+    this.registry.register({
+      process: 'TIMESHEET',
+      link: () => '/timesheets',
+      summaries: async (tx, ids) => {
+        const rows = await tx.timesheet.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, weekStart: true, entries: { select: { hours: true } } },
+        });
+        return new Map(
+          rows.map((r) => [
+            r.id,
+            `Week of ${isoDate(r.weekStart)}, ${totalHours(r.entries.map((e) => ({ hours: e.hours.toString() }))).toString()} h`,
+          ]),
+        );
+      },
+      decide: (principal, id, decision, note) => this.decide(principal, id, { decision, note }),
+    });
+  }
+
+  /** The item, with the decide flag from a running workflow when there is one. */
+  private async item(
+    tx: TenantTransaction,
+    s: SheetRow,
+    viewer: { me: string | null; principal: AuthPrincipal },
+  ): Promise<TimesheetItem> {
+    const wf =
+      s.status === 'SUBMITTED'
+        ? await this.engine.canDecide(tx, viewer.principal, 'TIMESHEET', s.id)
+        : null;
+    return this.toItem(s, { ...viewer, wf });
+  }
 
   private toItem(
     s: SheetRow,
-    viewer: { me: string | null; principal: AuthPrincipal },
+    viewer: { me: string | null; principal: AuthPrincipal; wf?: boolean | null },
   ): TimesheetItem {
     const own = s.employeeId === viewer.me;
     const hours = totalHours(s.entries.map((e) => ({ hours: e.hours.toString() })));
@@ -108,7 +146,7 @@ export class TimesheetsService {
       can: {
         edit: own && (s.status === 'DRAFT' || s.status === 'REJECTED'),
         submit: own && (s.status === 'DRAFT' || s.status === 'REJECTED') && s.entries.length > 0,
-        decide: !own && s.status === 'SUBMITTED' && this.isApprover(s, viewer),
+        decide: !own && s.status === 'SUBMITTED' && (viewer.wf ?? this.isApprover(s, viewer)),
       },
     };
   }
@@ -131,7 +169,7 @@ export class TimesheetsService {
         where: { employeeId: me, weekStart: toDate(week) },
         select: sheetSelect,
       });
-      if (s) return this.toItem(s, { me, principal });
+      if (s) return this.item(tx, s, { me, principal });
       const e = await tx.employee.findFirstOrThrow({ where: { id: me }, select: empSelect });
       return {
         id: null,
@@ -222,7 +260,8 @@ export class TimesheetsService {
             };
           }),
         });
-      return this.toItem(
+      return this.item(
+        tx,
         await tx.timesheet.findFirstOrThrow({ where: { id: sheetId }, select: sheetSelect }),
         { me, principal },
       );
@@ -252,12 +291,23 @@ export class TimesheetsService {
           decisionNote: null,
         },
       });
+      const hours = await tx.timeEntry.aggregate({
+        where: { timesheetId: id },
+        _sum: { hours: true },
+      });
+      await this.engine.start(tx, principal, {
+        process: 'TIMESHEET',
+        subjectId: id,
+        requesterEmployeeId: me,
+        measure: hours._sum.hours?.toString() ?? '0',
+      });
       await this.audit.record(tx, {
         action: 'projects.timesheet.submitted',
         entityType: 'timesheet',
         entityId: id,
       });
-      return this.toItem(
+      return this.item(
+        tx,
         await tx.timesheet.findFirstOrThrow({ where: { id }, select: sheetSelect }),
         { me, principal },
       );
@@ -275,11 +325,13 @@ export class TimesheetsService {
       if (!s) throw AppException.notFound('Timesheet');
       if (s.status !== 'SUBMITTED')
         throw AppException.conflict('Only a submitted week can be recalled');
+      await this.engine.cancel(tx, 'TIMESHEET', id);
       await tx.timesheet.update({
         where: { id },
         data: { status: 'DRAFT', submittedAt: null, approverEmployeeId: null },
       });
-      return this.toItem(
+      return this.item(
+        tx,
         await tx.timesheet.findFirstOrThrow({ where: { id }, select: sheetSelect }),
         { me, principal },
       );
@@ -301,8 +353,23 @@ export class TimesheetsService {
         if (me) approverOr.push({ approverEmployeeId: me });
         if (can(principal, P.PROJECTS_TIMESHEET_APPROVE, {}))
           approverOr.push({ approverEmployeeId: null });
-        if (!approverOr.length) return [];
-        where = { status: 'SUBMITTED', OR: approverOr, ...(me ? { employeeId: { not: me } } : {}) };
+        const legacy = approverOr.length
+          ? (
+              await tx.timesheet.findMany({
+                where: {
+                  status: 'SUBMITTED',
+                  OR: approverOr,
+                  ...(me ? { employeeId: { not: me } } : {}),
+                },
+                select: { id: true },
+              })
+            ).map((x) => x.id)
+          : [];
+        const running = await this.engine.withPending(tx, 'TIMESHEET', legacy);
+        const waiting = me ? await this.engine.subjectsWaitingFor(tx, 'TIMESHEET', me) : [];
+        where = {
+          id: { in: [...new Set([...legacy.filter((x) => !running.has(x)), ...waiting])] },
+        };
       }
       if (q.weekStart) where.weekStart = toDate(weekOf(q.weekStart));
       const rows = await tx.timesheet.findMany({
@@ -311,7 +378,7 @@ export class TimesheetsService {
         select: sheetSelect,
         take: 300,
       });
-      return rows.map((s) => this.toItem(s, { me, principal }));
+      return Promise.all(rows.map((s) => this.item(tx, s, { me, principal })));
     });
   }
 
@@ -323,10 +390,11 @@ export class TimesheetsService {
       const allowed =
         s.employeeId === me ||
         s.approverEmployeeId === me ||
+        (me !== null && (await this.engine.isInvolved(tx, 'TIMESHEET', s.id, me))) ||
         can(principal, P.PROJECTS_TIMESHEET_READ, {}) ||
         (s.approverEmployeeId === null && can(principal, P.PROJECTS_TIMESHEET_APPROVE, {}));
       if (!allowed) throw AppException.notFound('Timesheet');
-      return this.toItem(s, { me, principal });
+      return this.item(tx, s, { me, principal });
     });
   }
 
@@ -343,25 +411,47 @@ export class TimesheetsService {
       });
       if (!s) throw AppException.notFound('Timesheet');
       if (s.employeeId === me) throw AppException.forbidden('Nobody approves their own timesheet');
-      if (!this.isApprover(s, { me, principal }))
-        throw AppException.forbidden('You are not the approver of this timesheet');
       if (!canMoveTimesheet(s.status, input.decision))
         throw AppException.conflict('Only a submitted timesheet can be decided');
+      const outcome = await this.engine.decide(
+        tx,
+        principal,
+        'TIMESHEET',
+        id,
+        input.decision,
+        input.note ?? null,
+      );
+      if (outcome === 'PENDING') {
+        await this.audit.record(tx, {
+          action: 'projects.timesheet.step_approved',
+          entityType: 'timesheet',
+          entityId: id,
+        });
+        return this.item(
+          tx,
+          await tx.timesheet.findFirstOrThrow({ where: { id }, select: sheetSelect }),
+          { me, principal },
+        );
+      }
+      if (outcome === null && !this.isApprover(s, { me, principal }))
+        throw AppException.forbidden('You are not the approver of this timesheet');
+      const decision = outcome ?? input.decision;
       await tx.timesheet.update({
         where: { id },
         data: {
-          status: input.decision,
+          status: decision,
           decidedAt: new Date(),
           decidedByUserId: principal.userId,
           decisionNote: input.note ?? null,
         },
       });
       await this.audit.record(tx, {
-        action: `projects.timesheet.${input.decision.toLowerCase()}`,
+        action: `projects.timesheet.${decision.toLowerCase()}`,
         entityType: 'timesheet',
         entityId: id,
       });
-      return this.toItem(
+      return this.item(
+        tx,
         await tx.timesheet.findFirstOrThrow({ where: { id }, select: sheetSelect }),
         { me, principal },
       );

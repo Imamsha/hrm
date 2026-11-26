@@ -19,6 +19,7 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { Page, PageHeader } from '@/app/layout/page';
+import { saveDownload } from '@/features/recruitment/recruit-api';
 import { ResourceForm } from '@/features/structure/resource-form';
 import { api, errorMessage } from '@/lib/api';
 import { InvoiceView } from './billing-pages';
@@ -340,6 +341,19 @@ export function PortalInvoicePage() {
       <PageHeader
         title={`Invoice ${invoice.data.number ?? ''}`}
         description={`${invoice.data.currency} ${invoice.data.total} · ${label(invoice.data.status)}`}
+        actions={
+          <Button
+            variant="outline"
+            onClick={() => {
+              void saveDownload(
+                `/portal/invoices/${id}/pdf`,
+                `${invoice.data.number ?? 'Invoice'}.pdf`,
+              );
+            }}
+          >
+            Download PDF
+          </Button>
+        }
       />
       <InvoiceView inv={invoice.data} />
     </Page>

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Readable } from 'node:stream';
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import {
   canMoveClaim,
   checkExpenseItems,
@@ -41,6 +41,8 @@ import {
 import { StorageService } from '../../infrastructure/storage/storage.service.js';
 import { type AuthPrincipal, can } from '../access/principal.js';
 import { AuditService, diffChanges } from '../audit/audit.service.js';
+import { WorkflowEngine } from '../workflows/workflow-engine.service.js';
+import { WorkflowRegistry } from '../workflows/workflow-registry.js';
 import {
   safeFileName,
   sniffContentType,
@@ -137,14 +139,33 @@ async function myEmployeeId(
 }
 
 @Injectable()
-export class ExpensesService {
+export class ExpensesService implements OnModuleInit {
   private readonly logger = new Logger(ExpensesService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly storage: StorageService,
+    private readonly engine: WorkflowEngine,
+    private readonly registry: WorkflowRegistry,
   ) {}
+
+  /** The manager stage of claims can run through an approval workflow (ADR-018). */
+  onModuleInit(): void {
+    this.registry.register({
+      process: 'EXPENSE_CLAIM',
+      link: (id) => `/expenses/claims/${id}`,
+      summaries: async (tx, ids) => {
+        const rows = await tx.expenseClaim.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, title: true, totalClaimed: true },
+        });
+        return new Map(rows.map((r) => [r.id, `${r.title}, ${r.totalClaimed.toFixed(2)}`]));
+      },
+      decide: (principal, id, decision, note) =>
+        this.managerDecision(principal, id, { decision, note }),
+    });
+  }
 
   // ------------------------------------------------------------------------------ settings
 
@@ -278,7 +299,10 @@ export class ExpensesService {
         cancel: own && (c.status === 'DRAFT' || c.status === 'SUBMITTED'),
         reopen: own && (c.status === 'REJECTED' || c.status === 'SUBMITTED'),
         managerDecide:
-          !own && c.status === 'SUBMITTED' && me !== null && c.approverEmployeeId === me,
+          !own &&
+          c.status === 'SUBMITTED' &&
+          ((await this.engine.canDecide(tx, principal, 'EXPENSE_CLAIM', c.id)) ??
+            (me !== null && c.approverEmployeeId === me)),
         financeDecide: !own && verify && c.status === 'MANAGER_APPROVED',
         markPaid:
           !own && verify && c.status === 'FINANCE_APPROVED' && c.payoutMethod === 'EXTERNAL',
@@ -299,7 +323,7 @@ export class ExpensesService {
         if (!me) throw AppException.notFound('Employee record linked to your account');
         where = { employeeId: me };
       } else if (scope === 'approvals') {
-        where = me ? { approverEmployeeId: me, status: 'SUBMITTED' } : { id: { in: [] } };
+        where = { id: { in: me ? await this.awaitingManagerStep(tx, me) : [] } };
       } else {
         if (
           !can(principal, P.EXPENSES_CLAIM_READ, {}) &&
@@ -331,6 +355,19 @@ export class ExpensesService {
     });
   }
 
+  /** Submitted claims whose manager stage waits for this employee. */
+  private async awaitingManagerStep(tx: TenantTransaction, me: string): Promise<string[]> {
+    const legacy = (
+      await tx.expenseClaim.findMany({
+        where: { approverEmployeeId: me, status: 'SUBMITTED', employeeId: { not: me } },
+        select: { id: true },
+      })
+    ).map((c) => c.id);
+    const running = await this.engine.withPending(tx, 'EXPENSE_CLAIM', legacy);
+    const waiting = await this.engine.subjectsWaitingFor(tx, 'EXPENSE_CLAIM', me);
+    return [...new Set([...legacy.filter((id) => !running.has(id)), ...waiting])];
+  }
+
   get(principal: AuthPrincipal, id: string): Promise<ExpenseClaimDetails> {
     return this.prisma.withTenant(async (tx) => this.detailsIn(tx, principal, id));
   }
@@ -341,6 +378,7 @@ export class ExpensesService {
     const me = await myEmployeeId(tx, principal);
     const allowed =
       (me !== null && (c.employeeId === me || c.approverEmployeeId === me)) ||
+      (me !== null && (await this.engine.isInvolved(tx, 'EXPENSE_CLAIM', c.id, me))) ||
       can(principal, P.EXPENSES_CLAIM_READ, {}) ||
       can(principal, P.EXPENSES_CLAIM_VERIFY, {});
     if (!allowed) throw AppException.notFound('Expense claim');
@@ -773,7 +811,13 @@ export class ExpensesService {
         { submittedAt: new Date(), approverEmployeeId: manager },
         null,
       );
-      if (!manager) {
+      const wf = await this.engine.start(tx, principal, {
+        process: 'EXPENSE_CLAIM',
+        subjectId: id,
+        requesterEmployeeId: claim.employeeId,
+        measure: claim.totalClaimed.toFixed(2),
+      });
+      if (!wf && !manager) {
         await this.move(
           tx,
           principal,
@@ -793,6 +837,7 @@ export class ExpensesService {
       const { claim, me } = await this.visible(tx, principal, id);
       if (claim.employeeId !== me)
         throw AppException.forbidden('Only the claimant can cancel a claim');
+      if (claim.status === 'SUBMITTED') await this.engine.cancel(tx, 'EXPENSE_CLAIM', id);
       await this.move(tx, principal, id, claim.status, 'CANCELLED', {}, null);
       return this.detailsIn(tx, principal, id);
     });
@@ -804,6 +849,7 @@ export class ExpensesService {
       const { claim, me } = await this.visible(tx, principal, id);
       if (claim.employeeId !== me)
         throw AppException.forbidden('Only the claimant can reopen a claim');
+      if (claim.status === 'SUBMITTED') await this.engine.cancel(tx, 'EXPENSE_CLAIM', id);
       await this.move(
         tx,
         principal,
@@ -826,16 +872,33 @@ export class ExpensesService {
       const { claim, me } = await this.visible(tx, principal, id);
       if (claim.status !== 'SUBMITTED')
         throw AppException.conflict('Only a submitted claim awaits the manager');
-      if (!me || claim.approverEmployeeId !== me)
-        throw AppException.forbidden('Only the claimant’s reporting manager can decide this step');
       if (claim.employeeId === me)
         throw AppException.forbidden('You cannot approve your own claim');
+      const outcome = await this.engine.decide(
+        tx,
+        principal,
+        'EXPENSE_CLAIM',
+        id,
+        input.decision,
+        input.note ?? null,
+      );
+      if (outcome === 'PENDING') {
+        await this.audit.record(tx, {
+          action: 'expenses.claim.step_approved',
+          entityType: 'expense_claim',
+          entityId: id,
+        });
+        return this.detailsIn(tx, principal, id);
+      }
+      if (outcome === null && (!me || claim.approverEmployeeId !== me))
+        throw AppException.forbidden('Only the claimant’s reporting manager can decide this step');
+      const decision = outcome ?? input.decision;
       await this.move(
         tx,
         principal,
         id,
         'SUBMITTED',
-        input.decision === 'APPROVED' ? 'MANAGER_APPROVED' : 'REJECTED',
+        decision === 'APPROVED' ? 'MANAGER_APPROVED' : 'REJECTED',
         {
           managerDecidedByUserId: principal.userId,
           managerDecidedAt: new Date(),

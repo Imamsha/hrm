@@ -287,6 +287,14 @@ export class PortalService {
     });
   }
 
+  async invoicePdf(
+    principal: AuthPrincipal,
+    id: string,
+  ): Promise<{ body: Uint8Array; fileName: string }> {
+    const clientId = await this.prisma.withTenant((tx) => this.clientOf(tx, principal));
+    return this.billing.pdf(id, { clientId, status: { in: ['ISSUED', 'PAID'] } });
+  }
+
   invoice(principal: AuthPrincipal, id: string): Promise<InvoiceDetails> {
     return this.prisma.withTenant(async (tx) => {
       const clientId = await this.clientOf(tx, principal);

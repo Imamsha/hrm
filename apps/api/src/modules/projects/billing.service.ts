@@ -31,6 +31,7 @@ import {
 } from '../../infrastructure/database/prisma.service.js';
 import type { AuthPrincipal } from '../access/principal.js';
 import { AuditService } from '../audit/audit.service.js';
+import { StatementsService } from '../documents/statements.service.js';
 import { isoDate, isoOrNull, todayIso, toDate } from '../employees/employee-scope.js';
 import { clientRefSelect, empSelect, money, ref } from './projects-common.js';
 
@@ -85,7 +86,23 @@ export class BillingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly statements: StatementsService,
   ) {}
+
+  /** The invoice as a PDF from its stored figures (ADR-018). */
+  async pdf(
+    id: string,
+    where: Prisma.InvoiceWhereInput = {},
+  ): Promise<{ body: Uint8Array; fileName: string }> {
+    const { inv, org } = await this.prisma.withTenant(async (tx) => ({
+      inv: await this.details(tx, id, where),
+      org: (await tx.organization.findFirstOrThrow({ select: { name: true } })).name,
+    }));
+    return {
+      body: await this.statements.invoice(inv, org),
+      fileName: `${inv.number ?? 'Draft invoice'}.pdf`,
+    };
+  }
 
   // ---------------------------------------------------------------------------- configuration
 

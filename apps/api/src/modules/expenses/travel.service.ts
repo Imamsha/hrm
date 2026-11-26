@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, type OnModuleInit } from '@nestjs/common';
 import { Decimal, travelSettlement } from '@hrm/business-rules';
 import {
   type PaginatedResult,
@@ -25,6 +25,8 @@ import {
 } from '../../infrastructure/database/prisma.service.js';
 import { type AuthPrincipal, can } from '../access/principal.js';
 import { AuditService } from '../audit/audit.service.js';
+import { WorkflowEngine } from '../workflows/workflow-engine.service.js';
+import { WorkflowRegistry } from '../workflows/workflow-registry.js';
 import { displayName, isoDate, toDate } from '../employees/employee-scope.js';
 import { userNames } from '../recruitment/recruitment-mappers.js';
 import { subjectOf } from '../time/time-context.js';
@@ -121,11 +123,34 @@ export async function tripFigures(tx: TenantTransaction, tripId: string) {
 }
 
 @Injectable()
-export class TravelService {
+export class TravelService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly engine: WorkflowEngine,
+    private readonly registry: WorkflowRegistry,
   ) {}
+
+  /** Travel requests can run through an approval workflow (ADR-018). */
+  onModuleInit(): void {
+    this.registry.register({
+      process: 'TRAVEL_REQUEST',
+      link: (id) => `/travel/trips/${id}`,
+      summaries: async (tx, ids) => {
+        const rows = await tx.travelRequest.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, purpose: true, startDate: true, estimatedCost: true },
+        });
+        return new Map(
+          rows.map((r) => [
+            r.id,
+            `${r.purpose}, from ${r.startDate.toISOString().slice(0, 10)}${r.estimatedCost ? `, est. ${r.estimatedCost.toFixed(2)}` : ''}`,
+          ]),
+        );
+      },
+      decide: (principal, id, decision, note) => this.decide(principal, id, { decision, note }),
+    });
+  }
 
   private async toItem(
     tx: TenantTransaction,
@@ -166,7 +191,8 @@ export class TravelService {
         decide:
           !own &&
           t.status === 'SUBMITTED' &&
-          ((me !== null && t.approverEmployeeId === me) || fallback),
+          ((await this.engine.canDecide(tx, principal, 'TRAVEL_REQUEST', t.id)) ??
+            ((me !== null && t.approverEmployeeId === me) || fallback)),
         cancel: own && (t.status === 'SUBMITTED' || t.status === 'APPROVED'),
         desk: can(principal, P.TRAVEL_DESK_MANAGE, {}) && t.status === 'APPROVED',
       },
@@ -186,15 +212,24 @@ export class TravelService {
         where = { employeeId: me };
       } else if (scope === 'approvals') {
         const fallback = can(principal, P.TRAVEL_REQUEST_APPROVE, {});
+        const legacy = (
+          await tx.travelRequest.findMany({
+            where: {
+              status: 'SUBMITTED',
+              OR: [
+                ...(me ? [{ approverEmployeeId: me }] : []),
+                ...(fallback ? [{ approverEmployeeId: null }] : []),
+              ],
+              ...(me ? { NOT: { employeeId: me } } : {}),
+            },
+            select: { id: true },
+          })
+        ).map((t) => t.id);
+        const running = await this.engine.withPending(tx, 'TRAVEL_REQUEST', legacy);
+        const waiting = me ? await this.engine.subjectsWaitingFor(tx, 'TRAVEL_REQUEST', me) : [];
         where = {
-          status: 'SUBMITTED',
-          OR: [
-            ...(me ? [{ approverEmployeeId: me }] : []),
-            ...(fallback ? [{ approverEmployeeId: null }] : []),
-          ],
-          ...(me ? { NOT: { employeeId: me } } : {}),
+          id: { in: [...new Set([...legacy.filter((x) => !running.has(x)), ...waiting])] },
         };
-        if (!me && !fallback) where = { id: { in: [] } };
       } else {
         if (!can(principal, P.TRAVEL_REQUEST_READ, {}) && !can(principal, P.TRAVEL_DESK_MANAGE, {}))
           throw AppException.forbidden();
@@ -226,6 +261,7 @@ export class TravelService {
     const me = await myEmployeeId(tx, principal);
     const allowed =
       (me !== null && (t.employeeId === me || t.approverEmployeeId === me)) ||
+      (me !== null && (await this.engine.isInvolved(tx, 'TRAVEL_REQUEST', t.id, me))) ||
       can(principal, P.TRAVEL_REQUEST_READ, {}) ||
       can(principal, P.TRAVEL_DESK_MANAGE, {}) ||
       (t.approverEmployeeId === null && can(principal, P.TRAVEL_REQUEST_APPROVE, {}));
@@ -313,6 +349,12 @@ export class TravelService {
         },
         select: { id: true },
       });
+      await this.engine.start(tx, principal, {
+        process: 'TRAVEL_REQUEST',
+        subjectId: t.id,
+        requesterEmployeeId: me,
+        measure: input.estimatedCost ?? '0',
+      });
       await this.audit.record(tx, {
         action: 'travel.request.submitted',
         entityType: 'travel_request',
@@ -334,24 +376,41 @@ export class TravelService {
         throw AppException.conflict('Only a submitted request can be decided');
       if (me !== null && trip.employeeId === me)
         throw AppException.forbidden('You cannot approve your own travel');
+      const outcome = await this.engine.decide(
+        tx,
+        principal,
+        'TRAVEL_REQUEST',
+        id,
+        input.decision,
+        input.note ?? null,
+      );
+      if (outcome === 'PENDING') {
+        await this.audit.record(tx, {
+          action: 'travel.request.step_approved',
+          entityType: 'travel_request',
+          entityId: id,
+        });
+        return this.detailsIn(tx, principal, id);
+      }
       const isApprover = me !== null && trip.approverEmployeeId === me;
       const isFallback =
         trip.approverEmployeeId === null && can(principal, P.TRAVEL_REQUEST_APPROVE, {});
-      if (!isApprover && !isFallback)
+      if (outcome === null && !isApprover && !isFallback)
         throw AppException.forbidden(
           'Only the traveller’s reporting manager can decide this request',
         );
+      const decision = outcome ?? input.decision;
       await tx.travelRequest.update({
         where: { id },
         data: {
-          status: input.decision === 'APPROVED' ? 'APPROVED' : 'REJECTED',
+          status: decision === 'APPROVED' ? 'APPROVED' : 'REJECTED',
           decidedByUserId: principal.userId,
           decidedAt: new Date(),
           decisionNote: input.note ?? null,
         },
       });
       await this.audit.record(tx, {
-        action: `travel.request.${input.decision.toLowerCase()}`,
+        action: `travel.request.${decision.toLowerCase()}`,
         entityType: 'travel_request',
         entityId: id,
         metadata: { note: input.note ?? null },
@@ -376,6 +435,7 @@ export class TravelService {
         throw AppException.conflict(
           'The trip has bookings, advances or claims; ask the travel desk to settle it',
         );
+      if (trip.status === 'SUBMITTED') await this.engine.cancel(tx, 'TRAVEL_REQUEST', id);
       await tx.travelRequest.update({ where: { id }, data: { status: 'CANCELLED' } });
       await this.audit.record(tx, {
         action: 'travel.request.cancelled',

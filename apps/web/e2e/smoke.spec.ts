@@ -736,3 +736,74 @@ test('run a client project on a board and bill a milestone to paid', async ({ pa
   await expect(dialog).toBeHidden();
   await expect(page.getByText('paid', { exact: true })).toBeVisible();
 });
+
+test('design an approval workflow, generate a letter and accept it', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Covered on desktop');
+  test.setTimeout(120_000);
+  await registerViaUi(page);
+
+  await page.goto('/organization/structure?tab=companies');
+  await page.getByRole('button', { name: /New company/ }).click();
+  let dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Code/).fill('ACME');
+  await dialog.getByLabel(/^Name/).fill('Acme India');
+  await dialog.getByRole('button', { name: 'Create company' }).click();
+  await expect(dialog).toBeHidden();
+  await page.goto('/people/employees');
+  await page.getByRole('button', { name: /Add employee/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^First name/).fill('Esha');
+  await dialog.getByLabel(/^Date of joining/).fill('2025-01-06');
+  await dialog.getByLabel(/^Company/).selectOption({ label: 'Acme India (ACME)' });
+  await dialog.getByLabel(/^Employment type/).selectOption('FULL_TIME');
+  await dialog.getByRole('button', { name: 'Add employee' }).click();
+  await expect(page.getByRole('heading', { name: /Esha/ })).toBeVisible();
+  await page.getByRole('button', { name: /Actions/ }).click();
+  await page.getByRole('menuitem', { name: 'Link login account' }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Member').selectOption({ index: 2 });
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toBeHidden();
+
+  // A two-step leave workflow: manager, then a skip-level manager from 3 days.
+  await page.goto('/admin/workflows');
+  await page.getByRole('button', { name: /New workflow/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Name/).fill('Leave approval');
+  await dialog.getByRole('button', { name: /Add step/ }).click();
+  const step2 = dialog.getByRole('group', { name: 'Step 2' });
+  await step2.getByLabel(/^Step name/).fill('Skip level');
+  await step2.getByLabel(/^Approver/).selectOption('MANAGER_LEVEL');
+  await step2.getByLabel(/^Only from/).fill('3');
+  await dialog.getByRole('button', { name: 'Save (inactive)' }).click();
+  await expect(dialog).toBeHidden();
+  const workflows = page.getByLabel('Workflows');
+  await expect(workflows).toContainText('Skip level: manager level 2 · from 3 days');
+  await workflows.getByRole('button', { name: 'Activate' }).click();
+  await expect(workflows.getByText('active', { exact: true })).toBeVisible();
+
+  // A letter in the organization's own words, accepted by the employee it is for.
+  await page.goto('/documents/templates');
+  await page.getByRole('button', { name: /New template/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Name/).fill('Appointment');
+  await dialog.getByLabel(/^Title/).fill('Appointment letter');
+  await dialog.getByLabel(/^Text/).fill('Welcome to {{organization.name}}, ');
+  await dialog.getByRole('button', { name: '{{employee.firstName}}' }).click();
+  await dialog.getByRole('button', { name: 'Create template' }).click();
+  await expect(dialog).toBeHidden();
+  await page.goto('/documents');
+  await page.getByRole('button', { name: /Generate/ }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Template/).selectOption({ label: 'Appointment (Appointment letter)' });
+  await expect(dialog.getByRole('option', { name: /^Esha/ }).first()).toBeAttached();
+  await dialog.getByLabel(/^Employee/).selectOption({ index: 1 });
+  await dialog.getByLabel('Add signer').selectOption({ index: 1 });
+  await dialog.getByRole('button', { name: 'Generate PDF' }).click();
+  await expect(dialog).toBeHidden();
+  const docs = page.getByRole('list', { name: 'Documents' });
+  await expect(docs.getByText('awaiting acceptance')).toBeVisible();
+  await docs.getByRole('button', { name: 'Accept' }).click();
+  await expect(docs.getByText('accepted', { exact: true })).toBeVisible();
+  await expect(docs.getByRole('button', { name: /With certificate/ })).toBeVisible();
+});

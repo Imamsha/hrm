@@ -359,6 +359,17 @@ export class PayrollController {
     return this.runs.payslip(resultId);
   }
 
+  @Get('payslips/:resultId/pdf')
+  @RequirePermissions(P.PAYROLL_RUN_READ)
+  async payslipPdf(@Param('resultId', uuid) resultId: string) {
+    const f = await this.runs.payslipPdf(resultId);
+    return new StreamableFile(Buffer.from(f.body), {
+      type: 'application/pdf',
+      length: f.body.length,
+      disposition: `inline; filename="${f.fileName}"`,
+    });
+  }
+
   // ------------------------------------------------------------------ full & final
   @Get('settlements')
   @RequirePermissions(P.PAYROLL_SETTLEMENT_MANAGE)
@@ -446,6 +457,20 @@ export class MyPayrollController {
   @RequirePermissions(P.EMPLOYEES_SELF_ACCESS)
   payslip(@CurrentPrincipal() p: AuthPrincipal, @Param('resultId', uuid) resultId: string) {
     return this.runs.myPayslip(p, resultId);
+  }
+
+  @Get('payslips/:resultId/pdf')
+  @RequirePermissions(P.EMPLOYEES_SELF_ACCESS)
+  async payslipPdf(
+    @CurrentPrincipal() p: AuthPrincipal,
+    @Param('resultId', uuid) resultId: string,
+  ) {
+    const f = await this.runs.myPayslipPdf(p, resultId);
+    return new StreamableFile(Buffer.from(f.body), {
+      type: 'application/pdf',
+      length: f.body.length,
+      disposition: `inline; filename="${f.fileName}"`,
+    });
   }
 
   @Get('tax-declarations/:fy')

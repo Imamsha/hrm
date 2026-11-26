@@ -112,6 +112,9 @@ model Organization {
   projects            Project[]
   taxRates            TaxRate[]
   billingSettings     BillingSettings?
+  workflowDefinitions WorkflowDefinition[]
+  documentTemplates   DocumentTemplate[]
+  libraryDocuments    LibraryDocument[]
   employees           Employee[]
   employmentRecords   EmploymentRecord[]
 
@@ -1017,6 +1020,11 @@ model Employee {
   assignedWorkItems    WorkItem[]                 @relation("WorkItemAssignee")
   timesheets           Timesheet[]                @relation("EmployeeTimesheets")
   timesheetsToApprove  Timesheet[]                @relation("TimesheetApprover")
+  workflowRequests     WorkflowInstance[]         @relation("WorkflowRequester")
+  delegationsGiven     ApprovalDelegation[]       @relation("DelegationsGiven")
+  delegationsReceived  ApprovalDelegation[]       @relation("DelegationsReceived")
+  generatedDocuments   GeneratedDocument[]        @relation("GeneratedDocuments")
+  libraryAcks          LibraryAcknowledgement[]   @relation("LibraryAcknowledgements")
   improvementPlans     ImprovementPlan[]          @relation("ImprovementPlans")
   enrollments          Enrollment[]               @relation("Enrollments")
   surveyInvitations    SurveyInvitation[]         @relation("SurveyInvitations")
@@ -3986,4 +3994,335 @@ model InvoicePayment {
 
   @@index([organizationId, invoiceId])
   @@map("invoice_payments")
+}
+
+// =============================================================================================
+// Phase 11a — Workflow engine, documents and e-acceptance (ADR-018)
+// =============================================================================================
+
+enum WorkflowProcess {
+  LEAVE_REQUEST
+  EXPENSE_CLAIM
+  TRAVEL_REQUEST
+  TIMESHEET
+
+  @@map("workflow_process")
+}
+
+enum WorkflowInstanceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+
+  @@map("workflow_instance_status")
+}
+
+enum WorkflowTaskStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SKIPPED
+  CANCELLED
+
+  @@map("workflow_task_status")
+}
+
+enum TemplateCategory {
+  OFFER_LETTER
+  APPOINTMENT_LETTER
+  EXPERIENCE_LETTER
+  RELIEVING_LETTER
+  SALARY_CERTIFICATE
+  POLICY
+  OTHER
+
+  @@map("template_category")
+}
+
+enum GeneratedDocumentStatus {
+  FINAL
+  AWAITING_ACCEPTANCE
+  ACCEPTED
+  DECLINED
+
+  @@map("generated_document_status")
+}
+
+enum SignerKind {
+  EMPLOYEE
+  CANDIDATE
+
+  @@map("signer_kind")
+}
+
+enum SignerStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+
+  @@map("signer_status")
+}
+
+enum SignatureMethod {
+  LOGIN
+  EMAIL_OTP
+
+  @@map("signature_method")
+}
+
+enum LibraryDocumentStatus {
+  PUBLISHED
+  ARCHIVED
+
+  @@map("library_document_status")
+}
+
+model WorkflowDefinition {
+  id              String          @id @default(uuid(7)) @db.Uuid
+  organizationId  String          @map("organization_id") @db.Uuid
+  process         WorkflowProcess
+  name            String          @db.VarChar(120)
+  status          RecordStatus    @default(INACTIVE)
+  steps           Json
+  createdByUserId String?         @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  instances    WorkflowInstance[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, process, status])
+  @@map("workflow_definitions")
+}
+
+model WorkflowInstance {
+  id                  String                 @id @default(uuid(7)) @db.Uuid
+  organizationId      String                 @map("organization_id") @db.Uuid
+  definitionId        String                 @map("definition_id") @db.Uuid
+  process             WorkflowProcess
+  /// The request the instance approves (leave request, claim, trip or timesheet id).
+  subjectId           String                 @map("subject_id") @db.Uuid
+  requesterEmployeeId String                 @map("requester_employee_id") @db.Uuid
+  measure             Decimal                @db.Decimal(14, 2)
+  /// The definition's steps as they were when the request was submitted.
+  snapshot            Json
+  status              WorkflowInstanceStatus @default(PENDING)
+  completedAt         DateTime?              @map("completed_at") @db.Timestamptz(6)
+  createdAt           DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  definition WorkflowDefinition @relation(fields: [organizationId, definitionId], references: [organizationId, id], onDelete: Restrict)
+  requester  Employee           @relation("WorkflowRequester", fields: [organizationId, requesterEmployeeId], references: [organizationId, id], onDelete: Restrict)
+  tasks      WorkflowTask[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, process, subjectId])
+  @@map("workflow_instances")
+}
+
+model WorkflowTask {
+  id                      String             @id @default(uuid(7)) @db.Uuid
+  organizationId          String             @map("organization_id") @db.Uuid
+  instanceId              String             @map("instance_id") @db.Uuid
+  /// Index of the step in the snapshot, and its 1-based position among applicable steps.
+  stepIndex               Int                @map("step_index")
+  stepNumber              Int                @map("step_number")
+  stepName                String             @map("step_name") @db.VarChar(80)
+  status                  WorkflowTaskStatus @default(PENDING)
+  /// Who may decide (several for a role step; one approval is enough).
+  assigneeIds             String[]           @map("assignee_ids") @db.Uuid
+  onBehalfOfEmployeeId    String?            @map("on_behalf_of_employee_id") @db.Uuid
+  escalatedFromEmployeeId String?            @map("escalated_from_employee_id") @db.Uuid
+  dueAt                   DateTime?          @map("due_at") @db.Timestamptz(6)
+  skippedReason           String?            @map("skipped_reason") @db.VarChar(200)
+  decidedByUserId         String?            @map("decided_by_user_id") @db.Uuid
+  decidedByEmployeeId     String?            @map("decided_by_employee_id") @db.Uuid
+  decidedAt               DateTime?          @map("decided_at") @db.Timestamptz(6)
+  note                    String?            @db.VarChar(500)
+  createdAt               DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  instance WorkflowInstance @relation(fields: [organizationId, instanceId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([instanceId, stepIndex])
+  @@index([organizationId, status])
+  @@index([organizationId, instanceId])
+  @@map("workflow_tasks")
+}
+
+model ApprovalDelegation {
+  id                  String            @id @default(uuid(7)) @db.Uuid
+  organizationId      String            @map("organization_id") @db.Uuid
+  delegatorEmployeeId String            @map("delegator_employee_id") @db.Uuid
+  delegateEmployeeId  String            @map("delegate_employee_id") @db.Uuid
+  fromDate            DateTime          @map("from_date") @db.Date
+  toDate              DateTime          @map("to_date") @db.Date
+  /// Empty = every process.
+  processes           WorkflowProcess[]
+  note                String?           @db.VarChar(300)
+  revokedAt           DateTime?         @map("revoked_at") @db.Timestamptz(6)
+  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  delegator Employee @relation("DelegationsGiven", fields: [organizationId, delegatorEmployeeId], references: [organizationId, id], onDelete: Restrict)
+  delegate  Employee @relation("DelegationsReceived", fields: [organizationId, delegateEmployeeId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, delegatorEmployeeId, fromDate])
+  @@map("approval_delegations")
+}
+
+model DocumentTemplate {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  name           String           @db.VarChar(120)
+  category       TemplateCategory
+  status         RecordStatus     @default(ACTIVE)
+  currentVersion Int              @default(1) @map("current_version")
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  versions     DocumentTemplateVersion[]
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, id])
+  @@map("document_templates")
+}
+
+model DocumentTemplateVersion {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  templateId      String   @map("template_id") @db.Uuid
+  version         Int
+  title           String   @db.VarChar(200)
+  body            String   @db.VarChar(50000)
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  template  DocumentTemplate    @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict)
+  documents GeneratedDocument[]
+
+  @@unique([templateId, version])
+  @@unique([organizationId, id])
+  @@map("document_template_versions")
+}
+
+model GeneratedDocument {
+  id                String                  @id @default(uuid(7)) @db.Uuid
+  organizationId    String                  @map("organization_id") @db.Uuid
+  templateVersionId String                  @map("template_version_id") @db.Uuid
+  category          TemplateCategory
+  title             String                  @db.VarChar(200)
+  employeeId        String?                 @map("employee_id") @db.Uuid
+  offerId           String?                 @map("offer_id") @db.Uuid
+  storageKey        String                  @map("storage_key") @db.VarChar(500)
+  sha256            String                  @db.Char(64)
+  fileSize          Int                     @map("file_size")
+  /// The merge values used, for traceability.
+  mergedValues      Json                    @map("merged_values")
+  status            GeneratedDocumentStatus @default(FINAL)
+  certificateKey    String?                 @map("certificate_key") @db.VarChar(500)
+  certificateSha256 String?                 @map("certificate_sha256") @db.Char(64)
+  createdByUserId   String?                 @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  templateVersion DocumentTemplateVersion @relation(fields: [organizationId, templateVersionId], references: [organizationId, id], onDelete: Restrict)
+  employee        Employee?               @relation("GeneratedDocuments", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+  signers         DocumentSigner[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, employeeId])
+  @@index([organizationId, offerId])
+  @@map("generated_documents")
+}
+
+model DocumentSigner {
+  id              String           @id @default(uuid(7)) @db.Uuid
+  organizationId  String           @map("organization_id") @db.Uuid
+  documentId      String           @map("document_id") @db.Uuid
+  order           Int
+  kind            SignerKind
+  employeeId      String?          @map("employee_id") @db.Uuid
+  name            String           @db.VarChar(200)
+  email           String?          @db.VarChar(254)
+  status          SignerStatus     @default(PENDING)
+  method          SignatureMethod?
+  signedAt        DateTime?        @map("signed_at") @db.Timestamptz(6)
+  ip              String?          @db.VarChar(64)
+  userAgent       String?          @map("user_agent") @db.VarChar(500)
+  /// The document hash the signer accepted.
+  acceptedSha256  String?          @map("accepted_sha256") @db.Char(64)
+  declineReason   String?          @map("decline_reason") @db.VarChar(500)
+  /// Candidate link (hash of the e-mailed token) and one-time code.
+  accessTokenHash String?          @unique @map("access_token_hash") @db.Char(64)
+  otpHash         String?          @map("otp_hash") @db.Char(64)
+  otpExpiresAt    DateTime?        @map("otp_expires_at") @db.Timestamptz(6)
+  otpAttempts     Int              @default(0) @map("otp_attempts")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  document GeneratedDocument @relation(fields: [organizationId, documentId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([documentId, order])
+  @@index([organizationId, employeeId, status])
+  @@map("document_signers")
+}
+
+model LibraryDocument {
+  id                      String                @id @default(uuid(7)) @db.Uuid
+  organizationId          String                @map("organization_id") @db.Uuid
+  title                   String                @db.VarChar(200)
+  category                String                @db.VarChar(60)
+  description             String?               @db.VarChar(2000)
+  requiresAcknowledgement Boolean               @default(false) @map("requires_acknowledgement")
+  status                  LibraryDocumentStatus @default(PUBLISHED)
+  audienceCompanyId       String?               @map("audience_company_id") @db.Uuid
+  audienceDepartmentId    String?               @map("audience_department_id") @db.Uuid
+  currentVersion          Int                   @default(1) @map("current_version")
+  createdAt               DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  versions         LibraryDocumentVersion[]
+  acknowledgements LibraryAcknowledgement[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, status])
+  @@map("library_documents")
+}
+
+model LibraryDocumentVersion {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  documentId      String   @map("document_id") @db.Uuid
+  version         Int
+  storageKey      String   @map("storage_key") @db.VarChar(500)
+  fileName        String   @map("file_name") @db.VarChar(255)
+  contentType     String   @map("content_type") @db.VarChar(100)
+  size            Int
+  sha256          String   @db.Char(64)
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  document LibraryDocument @relation(fields: [organizationId, documentId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([documentId, version])
+  @@map("library_document_versions")
+}
+
+model LibraryAcknowledgement {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  documentId     String   @map("document_id") @db.Uuid
+  version        Int
+  employeeId     String   @map("employee_id") @db.Uuid
+  acknowledgedAt DateTime @default(now()) @map("acknowledged_at") @db.Timestamptz(6)
+
+  document LibraryDocument @relation(fields: [organizationId, documentId], references: [organizationId, id], onDelete: Restrict)
+  employee Employee        @relation("LibraryAcknowledgements", fields: [organizationId, employeeId], references: [organizationId, id], onDelete: Restrict)
+
+  @@unique([documentId, version, employeeId])
+  @@map("library_acknowledgements")
 }

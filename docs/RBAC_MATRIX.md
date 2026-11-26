@@ -84,6 +84,11 @@ other tenants → 404/400).
 | `projects.timesheet.approve`      | Approve timesheets of employees without a reporting manager (Phase 10)                                             |
 | `projects.billing.manage`         | Tax rates, invoice numbering, invoices and payments (Phase 10)                                                     |
 | `projects.portal.access`          | Client portal — the `client` role only (Phase 10)                                                                  |
+| `workflows.definition.manage`     | Create and activate approval workflows (Phase 11a)                                                                 |
+| `workflows.instance.read`         | See every approval trail (Phase 11a)                                                                               |
+| `documents.template.manage`       | Document templates and versions (Phase 11a)                                                                        |
+| `documents.document.generate`     | Generate documents and request acceptance; see all generated documents (Phase 11a)                                 |
+| `documents.library.manage`        | Publish, version and archive company documents; acknowledgement counts (Phase 11a)                                 |
 | `users.member.read`               | View members (and pending invitations)                                                                             |
 | `users.member.invite`             | Invite people, revoke invitations                                                                                  |
 | `users.member.update`             | Suspend/reactivate members, change role assignments                                                                |
@@ -294,6 +299,21 @@ it. The portal additionally requires a `client_portal_users` link, so owners and
 every permission) see no portal data. Project roles are **relationships**: project managers manage
 members, rates, columns and sprints; members (not viewers) create and change work items and log
 time. Timesheets are approved by the reporting manager; nobody approves their own.
+
+### Phase 11a role grants
+
+| Permission                  | Owner | Admin | HR admin | Finance | Manager | Employee |
+| --------------------------- | :---: | :---: | :------: | :-----: | :-----: | :------: |
+| workflows.definition.manage |   ✓   |   ✓   |    ✓     |         |         |          |
+| workflows.instance.read     |   ✓   |   ✓   |    ✓     |    ✓    |         |          |
+| documents.template.manage   |   ✓   |   ✓   |    ✓     |         |         |          |
+| documents.document.generate |   ✓   |   ✓   |    ✓     |         |         |          |
+| documents.library.manage    |   ✓   |   ✓   |    ✓     |         |         |          |
+
+Deciding a workflow step is **relationship-based**: the engine assigns each step to the resolved
+approver (reporting manager, higher manager, role holders or a named person, or their delegate).
+Nobody decides their own request, even through a role or a delegation. Signing is by turn: only
+the next signer may accept.
 
 ## Access scopes
 

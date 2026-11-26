@@ -11,6 +11,7 @@ import {
   Post,
   Put,
   Query,
+  StreamableFile,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS } from '@hrm/shared-types';
@@ -440,6 +441,17 @@ export class BillingController {
     return this.billing.get(id);
   }
 
+  @Get('invoices/:id/pdf')
+  @RequirePermissions(P.PROJECTS_BILLING_MANAGE)
+  async pdf(@Param('id', uuid) id: string) {
+    const f = await this.billing.pdf(id);
+    return new StreamableFile(Buffer.from(f.body), {
+      type: 'application/pdf',
+      length: f.body.length,
+      disposition: `inline; filename="${f.fileName}"`,
+    });
+  }
+
   @Delete('invoices/:id')
   @RequirePermissions(P.PROJECTS_BILLING_MANAGE)
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -518,6 +530,17 @@ export class PortalController {
     @Body(pipe(portalCommentSchema)) b: Out<typeof portalCommentSchema>,
   ) {
     return this.portal.comment(p, id, b);
+  }
+
+  @Get('invoices/:id/pdf')
+  @RequirePermissions(P.PROJECTS_PORTAL_ACCESS)
+  async invoicePdf(@CurrentPrincipal() p: AuthPrincipal, @Param('id', uuid) id: string) {
+    const f = await this.portal.invoicePdf(p, id);
+    return new StreamableFile(Buffer.from(f.body), {
+      type: 'application/pdf',
+      length: f.body.length,
+      disposition: `inline; filename="${f.fileName}"`,
+    });
   }
 
   @Get('invoices/:id')

@@ -13,3 +13,4 @@ export * from './payroll.js';
 export * from './expenses.js';
 export * from './talent.js';
 export * from './projects.js';
+export * from './workflows.js';

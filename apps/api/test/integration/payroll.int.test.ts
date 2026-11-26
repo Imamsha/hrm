@@ -399,6 +399,10 @@ describe('payroll runs', () => {
       annualTaxProjection: '25000.00',
       bankAccount: null,
     });
+    // The payslip PDF is rendered from the finalized result (Phase 11a).
+    const pdf = await client.get(`/me/payslips/${slips[0]?.resultId ?? ''}/pdf`, asha.token);
+    expect(pdf.status).toBe(200);
+    expect(pdf.headers['content-type']).toBe('application/pdf');
     expect((await client.get('/payroll/runs', asha.token)).status).toBe(403);
   });
 

@@ -274,7 +274,24 @@ See ADR-012.
   to one client. Every portal query is filtered to that client, portal-enabled projects and
   client-visible content.
 
-## 20. ADR index
+## 20. Workflows and documents (Phase 11a)
+
+- **Workflow engine** (`modules/workflows`):
+  - Pure rules in `@hrm/business-rules/workflows`: definition checks, thresholds, approver
+    resolution with skip reasons, delegation, SLA and escalation targets.
+  - A request's approval snapshots its definition. Each step becomes one task; deciding the last
+    one hands the final decision back to the owning module, which applies its own effects.
+  - Modules register a handler (summary, link, decide) so one inbox serves every process.
+  - A BullMQ job scheduler escalates late steps tenant by tenant.
+- **Documents** (`modules/documents`):
+  - Templates are the organization's own text with a fixed merge-field catalogue; a letter is
+    never generated with an empty field.
+  - Generated PDFs (pdf-lib) are stored in S3 with a SHA-256.
+  - Acceptance re-checks the hash, records who, how, when and from where, and appends a
+    certificate page.
+  - Payslips and invoices are rendered on request from finalized figures.
+
+## 21. ADR index
 
 | ADR                                                                     | Title                                                             |
 | ----------------------------------------------------------------------- | ----------------------------------------------------------------- |
@@ -295,3 +312,4 @@ See ADR-012.
 | [015](architecture/ADR-015-expenses-assets-travel.md)                   | Expenses, travel and assets                                       |
 | [016](architecture/ADR-016-performance-learning-engagement.md)          | Performance, learning and engagement                              |
 | [017](architecture/ADR-017-clients-and-projects.md)                     | Clients and projects (work, sprints, timesheets, billing, portal) |
+| [018](architecture/ADR-018-workflows-and-documents.md)                  | Workflow engine, documents and e-acceptance                       |

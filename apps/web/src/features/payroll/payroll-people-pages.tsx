@@ -29,7 +29,8 @@ import {
   taxDeclarationSchema,
 } from '@hrm/validation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Printer, X } from 'lucide-react';
+import { Download, Plus, Printer, X } from 'lucide-react';
+import { saveDownload } from '@/features/recruitment/recruit-api';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { Page, PageHeader } from '@/app/layout/page';
@@ -877,14 +878,27 @@ export function PayslipPage({ self }: { self: boolean }) {
         title={`Payslip · ${period(s.year, s.month)}`}
         description={s.company.legalName ?? s.company.name}
         actions={
-          <Button
-            variant="outline"
-            onClick={() => {
-              window.print();
-            }}
-          >
-            <Printer /> Print
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void saveDownload(
+                  self ? `/me/payslips/${id}/pdf` : `/payroll/payslips/${id}/pdf`,
+                  `Payslip ${String(s.year)}-${String(s.month).padStart(2, '0')}.pdf`,
+                );
+              }}
+            >
+              <Download /> PDF
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                window.print();
+              }}
+            >
+              <Printer /> Print
+            </Button>
+          </>
         }
       />
       <Card className="print:border-0 print:shadow-none">

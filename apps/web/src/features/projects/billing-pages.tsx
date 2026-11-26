@@ -41,6 +41,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { Page, PageHeader } from '@/app/layout/page';
 import { usePermission } from '@/features/auth/auth-store';
 import { useMembersPage } from '@/features/members/api';
+import { saveDownload } from '@/features/recruitment/recruit-api';
 import { ResourceForm } from '@/features/structure/resource-form';
 import { api, errorMessage } from '@/lib/api';
 import {
@@ -843,6 +844,17 @@ export function InvoicePage() {
         actions={
           <>
             <Status s={inv.status} />
+            <Button
+              variant="outline"
+              onClick={() => {
+                void saveDownload(
+                  `/invoices/${inv.id}/pdf`,
+                  `${inv.number ?? 'Draft invoice'}.pdf`,
+                );
+              }}
+            >
+              PDF
+            </Button>
             {inv.status === 'DRAFT' ? (
               <>
                 <Input

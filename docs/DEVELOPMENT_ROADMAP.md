@@ -18,8 +18,9 @@ approval before the next phase starts.
 | 07    | India payroll: structures, earnings, deductions, EPF, ESI, PT, TDS, regimes, runs, payslips, arrears, approvals, bank files, F&F                                                                                                                          | ✅ pushed `d454f0e`                                         |
 | 08    | Expenses, assets & travel: claims, reimbursements, OCR, asset allocation/return, travel requests/approvals/settlements                                                                                                                                    | 🟡 verified locally                                         |
 | 09    | Performance & learning: cycles, OKRs, goals, KPIs, feedback, 360, training, learning paths, certifications, engagement                                                                                                                                    | ✅ pushed (`f169c98`)                                       |
-| 10    | Clients & projects: clients, projects, features/epics, stories, tasks, bugs, assignments, sprints & boards, timesheets, client billing, client portal (owner request 2026-11-24)                                                                          | 🟡 verified locally, awaiting approval                      |
-| 11    | Documents, helpdesk & workflows: document management, templates, e-signature integration, ticketing, SLA, knowledge base, workflow engine, approval designer, escalation, delegation                                                                      | ⏳                                                          |
+| 10    | Clients & projects: clients, projects, features/epics, stories, tasks, bugs, assignments, sprints & boards, timesheets, client billing, client portal (owner request 2026-11-24)                                                                          | ✅ pushed (`ef2ef1e`)                                       |
+| 11a   | Workflows & documents: workflow engine, approval designer, escalation, delegation, document templates, generated PDFs, policy library, e-acceptance                                                                                                       | 🟡 verified locally, awaiting approval                      |
+| 11b   | Helpdesk, separation & compliance: ticketing, SLA, knowledge base, resignation & exit, compliance registers                                                                                                                                               | ⏳                                                          |
 | 12    | Advanced AI platform: HR assistant, recruitment AI, document intelligence, OCR, embeddings, RAG, agents, workforce insights, automation, cost monitoring, AI security, evaluation                                                                         | ⏳                                                          |
 | 13    | Analytics & reporting: dashboards, employee/payroll/attendance/recruitment/attrition/performance analytics, report builder, export, scheduled reports, AI summaries                                                                                       | ⏳                                                          |
 | 14    | Complete React Native app: employee & manager apps, attendance, leave, payslips, expenses, documents, notifications, approvals, push, offline data, mobile security                                                                                       | ⏳                                                          |
@@ -81,6 +82,15 @@ approval before the next phase starts.
 - Investment proof verification workflow and declaration lock dates (Phase 11 workflows).
 - Off-cycle runs (bonus, correction) and payroll variance analytics (Phase 13).
 - Batched/background calculation for very large runs (BullMQ), and mobile payslips (Phase 14).
+
+## Carried forward from Phase 11a
+
+- Workflows for recruitment requisitions, profile changes and attendance regularization;
+  parallel ("all must approve") role steps; conditions on fields other than the measure.
+- Notifications for new, due and escalated steps (Phase 15 notifications).
+- Provider e-signatures (Aadhaar eSign, DocuSign) and document retention/malware scanning (Phase 15).
+- Indic-script PDFs (bundled fonts) and rich-text templates; bulk letter generation.
+- Settlement letters and Form 16 PDFs (with Phase 11b separation and statutory reports).
 
 ## Carried forward from Phase 10
 

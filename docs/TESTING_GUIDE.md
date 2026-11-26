@@ -35,6 +35,43 @@ Integration tests use an isolated database (`hrm_test`), Redis DB 1 and bucket `
 (`TEST_*` variables in `.env.example`). The audit log is append-only, so tests create uniquely
 named tenants instead of cleaning up.
 
+## What is covered (Phase 11a)
+
+- **business-rules** (`workflows.test.ts`, 8 tests):
+  - definition checks and thresholds;
+  - approver resolution (managers, roles, named people; never the requester; skip reasons);
+  - delegation (dates, processes, never to the requester) and overlap;
+  - SLA and escalation targets;
+  - template merge fields (unknown or unclosed), rendering with missing values, signer order
+    and state.
+- **validation** (`workflows.test.ts`): threshold normalisation, step rules, rejection reasons,
+  delegation ranges, merge fields in title and body, one generation subject, OTP format.
+- **integration:**
+  - `workflows.int.test.ts` (6 tests):
+    - one active definition (direct SQL);
+    - a threshold step added only above 50,000 and completion on the last approval, from the
+      inbox and from the module;
+    - the approval trail, and decided steps frozen (direct SQL);
+    - rejection with a reason, and a role step skipped when only the requester holds the role;
+    - delegation, then escalation of an overdue step by the sweep, and revocation;
+    - the built-in rule when switched off; tenant isolation;
+    - leave booked only on the last of two steps.
+  - `documents.int.test.ts` (6 tests):
+    - unknown fields rejected; versions;
+    - letters filled from records, refused with gaps, PDF hash = stored hash; letters visible
+      only to the people they concern; hash immutable (direct SQL);
+    - login acceptance with a certificate PDF, and refusal when the stored file is replaced;
+    - candidate offer acceptance by e-mailed code (wrong code refused) marks the offer accepted;
+    - library PDF-only upload, acknowledgement per version, tenant isolation.
+  - Payslip and invoice PDFs are checked in the payroll and projects tests.
+- **web** (`features/workflows/workflows.test.tsx`, 4 tests): navigation gating; inbox
+  approve/reject with a required reason; library acknowledgement; public candidate acceptance
+  with a code.
+- **E2E:**
+  - design and activate a two-step leave workflow;
+  - write a template with a merge field;
+  - generate a letter for the linked owner, accept it and see the certificate.
+
 ## What is covered (Phase 10)
 
 Rates and the tax rate in tests are **fictional round numbers** (a 1000/h rate, a 10 % "Test tax").

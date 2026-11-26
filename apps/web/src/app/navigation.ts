@@ -1,6 +1,11 @@
 import { PERMISSIONS, type Permission } from '@hrm/shared-types';
 import {
   Activity,
+  FileSignature,
+  FileStack,
+  GitBranch,
+  Inbox as InboxIcon,
+  LibraryBig,
   FileSpreadsheet,
   FolderKanban,
   Handshake,
@@ -353,6 +358,41 @@ export const navigation: NavSection[] = [
         icon: Globe,
         permission: PERMISSIONS.PROJECTS_PORTAL_ACCESS,
         hideWith: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+    ],
+  },
+  {
+    label: 'Workflows & documents',
+    items: [
+      {
+        label: 'Approval inbox',
+        to: '/me/approval-tasks',
+        icon: InboxIcon,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Documents',
+        to: '/documents',
+        icon: FileSignature,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Company documents',
+        to: '/library',
+        icon: LibraryBig,
+        permission: PERMISSIONS.EMPLOYEES_SELF_ACCESS,
+      },
+      {
+        label: 'Document templates',
+        to: '/documents/templates',
+        icon: FileStack,
+        permission: PERMISSIONS.DOCUMENTS_TEMPLATE_MANAGE,
+      },
+      {
+        label: 'Approval workflows',
+        to: '/admin/workflows',
+        icon: GitBranch,
+        permission: PERMISSIONS.WORKFLOWS_DEFINITION_MANAGE,
       },
     ],
   },

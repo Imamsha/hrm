@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, type OnModuleInit } from '@nestjs/common';
 import {
   countLeaveDays,
   Decimal,
@@ -32,6 +32,8 @@ import {
   type TenantTransaction,
 } from '../../infrastructure/database/prisma.service.js';
 import { type AuthPrincipal, can } from '../access/principal.js';
+import { WorkflowEngine } from '../workflows/workflow-engine.service.js';
+import { WorkflowRegistry } from '../workflows/workflow-registry.js';
 import { AuditService, diffChanges } from '../audit/audit.service.js';
 import { employeeRefSelect, toEmployeeRef } from '../employees/employee-mapper.js';
 import {
@@ -110,11 +112,34 @@ interface Problem {
 }
 
 @Injectable()
-export class LeaveService {
+export class LeaveService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly engine: WorkflowEngine,
+    private readonly registry: WorkflowRegistry,
   ) {}
+
+  /** Lets the approval inbox summarise and decide leave requests (ADR-018). */
+  onModuleInit(): void {
+    this.registry.register({
+      process: 'LEAVE_REQUEST',
+      link: () => '/me/approvals',
+      summaries: async (tx, ids) => {
+        const rows = await tx.leaveRequest.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, days: true, startDate: true, leaveType: { select: { name: true } } },
+        });
+        return new Map(
+          rows.map((r) => [
+            r.id,
+            `${r.leaveType.name}, ${r.days.toFixed(2)} day(s) from ${isoDate(r.startDate)}`,
+          ]),
+        );
+      },
+      decide: (principal, id, decision, note) => this.decide(principal, id, { decision, note }),
+    });
+  }
 
   // ------------------------------------------------------------------ leave types
 
@@ -327,6 +352,12 @@ export class LeaveService {
         },
         select: requestSelect,
       });
+      await this.engine.start(tx, principal, {
+        process: 'LEAVE_REQUEST',
+        subjectId: row.id,
+        requesterEmployeeId: s.id,
+        measure: r.days.toFixed(2),
+      });
       await this.audit.record(tx, {
         action: 'leave.requested',
         entityType: 'leave_request',
@@ -383,6 +414,8 @@ export class LeaveService {
     const ors: Prisma.LeaveRequestWhereInput[] = [];
     if (scope) ors.push({ employee: scope });
     if (myEmployeeId) {
+      const waiting = await this.engine.subjectsWaitingFor(tx, 'LEAVE_REQUEST', myEmployeeId);
+      if (waiting.length) ors.push({ id: { in: waiting } });
       ors.push({ approverEmployeeId: myEmployeeId });
       ors.push({
         employee: {
@@ -403,7 +436,8 @@ export class LeaveService {
       select: requestSelect,
       take: 200,
     });
-    return Promise.all(rows.map((r) => this.toItem(tx, principal, r)));
+    const items = await Promise.all(rows.map((r) => this.toItem(tx, principal, r)));
+    return items.filter((i) => i.canDecide);
   }
 
   decide(
@@ -424,11 +458,29 @@ export class LeaveService {
       }
       if (r.status !== 'PENDING')
         throw AppException.conflict('This request has already been decided');
+      const outcome = await this.engine.decide(
+        tx,
+        principal,
+        'LEAVE_REQUEST',
+        id,
+        input.decision,
+        input.note ?? null,
+      );
+      if (outcome === 'PENDING') {
+        await this.audit.record(tx, {
+          action: 'leave.step_approved',
+          entityType: 'leave_request',
+          entityId: id,
+          metadata: { employeeId: s.id, note: input.note ?? null },
+        });
+        return this.toItem(tx, principal, r);
+      }
+      const decision = outcome ?? input.decision;
       const settings = await timeSettings(tx, principal.organizationId ?? '');
       const year = leaveYearOf(isoDate(r.startDate), settings.leaveYearStartMonth);
       const type = await tx.leaveType.findFirst({ where: { id: r.leaveType.id } });
       if (!type) throw AppException.notFound('Leave type');
-      if (input.decision === 'APPROVED' && type.tracksBalance) {
+      if (decision === 'APPROVED' && type.tracksBalance) {
         await ensureLedger(
           tx,
           principal.organizationId ?? '',
@@ -447,14 +499,14 @@ export class LeaveService {
       const row = await tx.leaveRequest.update({
         where: { id },
         data: {
-          status: input.decision,
+          status: decision,
           decidedByUserId: principal.userId,
           decidedAt: new Date(),
           decisionNote: input.note ?? null,
         },
         select: requestSelect,
       });
-      if (input.decision === 'APPROVED' && type.tracksBalance) {
+      if (decision === 'APPROVED' && type.tracksBalance) {
         await tx.leaveLedgerEntry.create({
           data: {
             organizationId: principal.organizationId ?? '',
@@ -470,7 +522,7 @@ export class LeaveService {
         });
       }
       await this.audit.record(tx, {
-        action: input.decision === 'APPROVED' ? 'leave.approved' : 'leave.rejected',
+        action: decision === 'APPROVED' ? 'leave.approved' : 'leave.rejected',
         entityType: 'leave_request',
         entityId: id,
         metadata: { employeeId: s.id, days: r.days.toFixed(2), note: input.note ?? null },
@@ -490,7 +542,9 @@ export class LeaveService {
       const s = await subjectOf(tx, r.employeeId);
       if (!s) throw AppException.notFound('Leave request');
       const self = isSelfSubject(principal, s);
-      const approver = await this.canDecide(tx, principal, s, r);
+      const approver =
+        (await this.canDecide(tx, principal, s, r)) ||
+        can(principal, P.LEAVE_REQUEST_APPROVE, s.attributes);
       if (!self && !approver) {
         if (!can(principal, P.LEAVE_REQUEST_READ, s.attributes))
           throw AppException.notFound('Leave request');
@@ -500,6 +554,7 @@ export class LeaveService {
         throw AppException.conflict('This request can no longer be cancelled');
       if (self && !approver && r.status === 'APPROVED' && isoDate(r.startDate) <= todayIso())
         throw AppException.conflict('Leave that has started can only be cancelled by an approver');
+      if (r.status === 'PENDING') await this.engine.cancel(tx, 'LEAVE_REQUEST', id);
       const row = await tx.leaveRequest.update({
         where: { id },
         data: { status: 'CANCELLED' },
@@ -556,9 +611,11 @@ export class LeaveService {
     tx: TenantTransaction,
     principal: AuthPrincipal,
     s: Subject,
-    r: { approverEmployeeId: string | null },
+    r: { id: string; approverEmployeeId: string | null },
   ): Promise<boolean> {
     if (isSelfSubject(principal, s)) return false;
+    const wf = await this.engine.canDecide(tx, principal, 'LEAVE_REQUEST', r.id);
+    if (wf !== null) return wf;
     if (can(principal, P.LEAVE_REQUEST_APPROVE, s.attributes)) return true;
     if (!principal.membershipId) return false;
     const me = await tx.employee.findFirst({

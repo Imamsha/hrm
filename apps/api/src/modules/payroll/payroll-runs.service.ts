@@ -27,6 +27,7 @@ import {
 import { FieldEncryption } from '../../infrastructure/security/field-encryption.service.js';
 import { type AuthPrincipal, can } from '../access/principal.js';
 import { AuditService } from '../audit/audit.service.js';
+import { StatementsService } from '../documents/statements.service.js';
 import { displayName, isoDate, toDate } from '../employees/employee-scope.js';
 import { userNames } from '../recruitment/recruitment-mappers.js';
 import { selfEmployeeId } from '../time/time-context.js';
@@ -144,6 +145,7 @@ export class PayrollRunsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly crypto: FieldEncryption,
+    private readonly statements: StatementsService,
   ) {}
 
   private async toRun(
@@ -774,6 +776,26 @@ export class PayrollRunsService {
         finalizedAt: r.run.finalizedAt?.toISOString() ?? '',
       }));
     });
+  }
+
+  /** The payslip as a PDF, rendered from the finalized result (ADR-018). */
+  async payslipPdf(resultId: string): Promise<{ body: Uint8Array; fileName: string }> {
+    const p = await this.payslip(resultId);
+    return {
+      body: await this.statements.payslip(p),
+      fileName: `Payslip ${String(p.year)}-${String(p.month).padStart(2, '0')} ${p.employee.employeeNumber}.pdf`,
+    };
+  }
+
+  async myPayslipPdf(
+    principal: AuthPrincipal,
+    resultId: string,
+  ): Promise<{ body: Uint8Array; fileName: string }> {
+    const p = await this.myPayslip(principal, resultId);
+    return {
+      body: await this.statements.payslip(p),
+      fileName: `Payslip ${String(p.year)}-${String(p.month).padStart(2, '0')}.pdf`,
+    };
   }
 
   myPayslip(principal: AuthPrincipal, resultId: string): Promise<PayslipItem> {

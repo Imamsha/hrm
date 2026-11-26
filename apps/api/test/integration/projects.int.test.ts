@@ -503,6 +503,10 @@ describe('timesheets and billing', () => {
       number: 'INV-2026-0001',
       dueOn: '2026-12-24',
     });
+    // The invoice PDF is rendered from the stored figures (Phase 11a).
+    const pdf = await client.get(`/invoices/${draft.id}/pdf`, owner.accessToken);
+    expect(pdf.status).toBe(200);
+    expect(pdf.headers['content-type']).toBe('application/pdf');
     await asApp(async (db) => {
       await expect(
         db.query(`UPDATE invoices SET total = 1, subtotal = 1, tax_total = 0 WHERE id = $1`, [
